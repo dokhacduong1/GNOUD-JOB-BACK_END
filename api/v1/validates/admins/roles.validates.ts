@@ -24,7 +24,7 @@ export const edit = (req: Request, res: Response, next: any): void => {
     const title: string = req.body.title.toString();
     //Nếu người dùng cố tình muốn đổi các trạng thái bên dưới thành rỗng thì in ra lỗi
     if (title === "") {
-        res.status(400).json({ error: "Tiêu Đề Chưa Có Dữ Liệu!" });
+        res.status(400).json({ error: "Tiêu Đề Chưa Có Dữ Liệu!" })
         return;
     }
 
