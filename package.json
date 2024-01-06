@@ -9,9 +9,10 @@
     "add-build" : "git add dist",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "husky": {
-    "pre-commit": "build"
-  },
+ "pre-commit": [
+    "add-build",
+    "build"
+  ],
  
   "author": "",
   "license": "ISC",
