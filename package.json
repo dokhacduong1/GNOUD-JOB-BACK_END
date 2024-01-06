@@ -10,8 +10,8 @@
     "test": "echo \"Error: no test specified\" && exit 1"
   },
  "pre-commit": [
-    "add-build",
-    "build"
+    "build",
+    "add-build"
   ],
  
   "author": "",
