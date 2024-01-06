@@ -115,7 +115,7 @@ export const index = async function (req: Request, res: Response): Promise<void>
                 .sort(sort)
             if (req.query.tree === "true") {
                 //Convert lại thành key gửi cho client
-                records = createTree.tree2(records);
+                records = createTree.tree2(records)
             }
         } else {
             //Nếu không sẽ lấy theo tiêu chí
