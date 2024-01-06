@@ -5,15 +5,14 @@
   "main": "index.js",
   "scripts": {
     "start": "nodemon index.ts",
-    "build":"tsc",
-    "add-build" : "git add dist",
+    "build": "tsc",
+    "add-build": "git add dist",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
- "pre-commit": [
+  "pre-commit": [
     "build",
     "add-build"
   ],
- 
   "author": "",
   "license": "ISC",
   "dependencies": {
@@ -28,7 +27,6 @@
     "mongoose-slug-updater": "^3.3.0",
     "multer": "^1.4.5-lts.1",
     "nodemailer": "^6.9.7",
-    "pre-commit": "^1.2.2",
     "streamifier": "^0.1.1",
     "unidecode": "^0.1.8"
   },
