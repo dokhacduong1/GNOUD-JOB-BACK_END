@@ -93,7 +93,7 @@ export const index = async function (req: Request, res: Response): Promise<void>
         const records = await Role.find(find)
             .sort(sort)
             .limit(objectPagination.limitItem)
-            .skip(objectPagination.skip);
+            .skip(objectPagination.skip)
 
         //Mã hóa dữ liệu khi gửi đi
         const dataEncrypted = encryptedData(records)
