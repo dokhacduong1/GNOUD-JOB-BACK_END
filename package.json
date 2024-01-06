@@ -11,11 +11,11 @@
     "foo": "echo \"fooo\" && exit 0",
     "bar": "echo \"bar\" && exit 0"
   },
-  "pre-commit": [
-    "foo",
-    "bar",
-    "test"
-  ],
+  "husky": {
+    "hooks": {
+      "pre-commit": "npm run foo && npm run bar && npm run test"
+    }
+  },
   "author": "",
   "license": "ISC",
   "dependencies": {
@@ -38,6 +38,7 @@
     "@types/cors": "^2.8.17",
     "@types/express": "^4.17.21",
     "@types/node": "^20.10.5",
+    "husky": "^8.0.3",
     "nodemon": "^3.0.2",
     "ts-node": "^10.9.2",
     "typescript": "^5.3.3"
