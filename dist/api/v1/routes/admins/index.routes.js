@@ -33,7 +33,7 @@ const middleware = __importStar(require("../../middlewares/admins/auth.middlewar
 const routesAdminVersion1 = (app) => {
     const version = "/api/v1/admin";
     app.use(version + "/employers", employer_routes_1.employerRoutes);
-    app.use(version + "/jobs", job_routes_1.jobRoutes);
+    app.use(version + "/jobs", middleware.auth, job_routes_1.jobRoutes);
     app.use(version + "/job-categories", middleware.auth, jobCategories_routes_1.jobCategoriesRoutes);
     app.use(version + "/admins", admins_routes_1.adminRoutes);
     app.use(version + "/uploads", upload_routes_1.uploadRoutes);

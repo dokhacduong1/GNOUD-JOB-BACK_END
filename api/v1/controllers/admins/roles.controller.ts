@@ -4,7 +4,7 @@ import Role from "../../../../models/roles.model";
 import { convertToSlug } from "../../../../helpers/convertToSlug";
 import { filterQueryPagination } from "../../../../helpers/filterQueryPagination.";
 import { encryptedData } from "../../../../helpers/encryptedData";
-import Admin from "../../../../models/admins.model";
+
 //VD: //VD: {{BASE_URL}}/api/v1/admin/roles?page=1&limit=7&sortKey=title&sortValue=asc&status=active&featured=true&salaryKey=gt&salaryValue=1000&jobLevel=Intern&occupationKey=software-development
 export const index = async function (req: Request, res: Response): Promise<void> {
     try {
@@ -117,7 +117,7 @@ export const create = async function (req: Request, res: Response): Promise<void
         }
 
         //Định dạng bản ghi lưu vào database
-        const role = {
+        const role : rolesInterface.Find = {
             title: req.body.title,
             description: req.body.description || "",
         };
@@ -245,6 +245,7 @@ export const changeMulti = async function (req: Request, res: Response): Promise
 
         let ids: string[];
         let key: string;
+        //lấy key từ người dùng gửi lên
         if (req.body.key) {
             key = req.body.key.toString();
         }
@@ -256,6 +257,7 @@ export const changeMulti = async function (req: Request, res: Response): Promise
         if (req.body.ids) {
             ids = req.body.ids;
         }
+        //Check xem key có hợp lệ hay không
         switch (key) {
             case KEY.DELETED:
                 //Xóa mềm dữ liệu của cảng mảng ids người dùng gửi lên,ghĩa là không xóa hẳn dữ liệu ra khỏi database mà chỉ chỉnh trường deteled thành true thôi
@@ -291,7 +293,6 @@ export const info = async function (req: Request, res: Response): Promise<void> 
             deleted: false,
         })
 
-      
         //Mã hóa dữ liệu lại
         const dataEncrypted = encryptedData(record)
         res.status(200).json({ data: dataEncrypted, code: 200,role_id:req["userAdmin"].role_id  });

@@ -20,10 +20,14 @@ const jobSchema = new mongoose.Schema(
         workExperience: Number,
         detailWorkExperience: String,
         welfare: Array,
-        address: String,
+        address: [
+            {
+                location: String,
+                linkMap: Array,
+            }
+        ],
         phone: String,
         email: String,
-        keyword: String,
         listUserId: Array,
         featured:Boolean,
         end_date:Date,
@@ -37,6 +41,11 @@ const jobSchema = new mongoose.Schema(
             default: false,
         },
         slug: {
+            type: String,
+            slug: "title",
+            unique: true
+        },
+        keyword: {
             type: String,
             slug: "title",
             unique: true

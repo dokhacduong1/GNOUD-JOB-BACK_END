@@ -19,7 +19,6 @@ export const index = async function (req: Request, res: Response): Promise<void>
     }
 }
 
-
 // [POST] /api/v1/admin/admins/login
 export const login = async function (req: Request, res: Response): Promise<void> {
     try {
@@ -39,7 +38,7 @@ export const login = async function (req: Request, res: Response): Promise<void>
             return;
         }
         if (user.status !== "active") {
-            res.status(401).json({ error: "Tài Khoản Đã Bị Khóa!" });
+            res.status(401).json({ error: "Tài Khoản Đã Bị Khóa!!" });
             return;
         }
         //Lấy ra token lưu vào cookie

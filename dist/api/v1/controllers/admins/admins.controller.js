@@ -43,7 +43,7 @@ const login = function (req, res) {
                 return;
             }
             if (user.status !== "active") {
-                res.status(401).json({ error: "Tài Khoản Đã Bị Khóa!" });
+                res.status(401).json({ error: "Tài Khoản Đã Bị Khóa!!" });
                 return;
             }
             const token = user.token;

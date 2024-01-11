@@ -142,15 +142,24 @@ export const index = async function (req: Request, res: Response): Promise<void>
         //Check xem có bao job để phân trang
         const countJobs: number = Math.round((countRecord / queryLimit));
 
+        let records = [];
         //Tìm tất cả các công việc.
-        const records = await Job.find(find)
+        if (req.query.findAll) {
+            records = await Job.find(find)
+            .sort(sort)
+            .select("").populate(populateCheck);
+        }else{
+            records = await Job.find(find)
             .sort(sort)
             .limit(objectPagination.limitItem || 4)
             .skip(objectPagination.skip || 0)
             .select("").populate(populateCheck);
+        }
+      
       
         //Mã hóa dữ liệu khi gửi đi
         const dataEncrypted = encryptedData(records)
+        console.log(records)
         //Trả về công việc đó.
         res.status(200).json({ data: dataEncrypted, code: 200, countJobs: countJobs });
     } catch (error) {

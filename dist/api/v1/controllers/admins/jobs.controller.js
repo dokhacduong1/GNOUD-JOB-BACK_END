@@ -102,12 +102,21 @@ const index = function (req, res) {
                 },
             ];
             const countJobs = Math.round((countRecord / queryLimit));
-            const records = yield jobs_model_1.default.find(find)
-                .sort(sort)
-                .limit(objectPagination.limitItem || 4)
-                .skip(objectPagination.skip || 0)
-                .select("").populate(populateCheck);
+            let records = [];
+            if (req.query.findAll) {
+                records = yield jobs_model_1.default.find(find)
+                    .sort(sort)
+                    .select("").populate(populateCheck);
+            }
+            else {
+                records = yield jobs_model_1.default.find(find)
+                    .sort(sort)
+                    .limit(objectPagination.limitItem || 4)
+                    .skip(objectPagination.skip || 0)
+                    .select("").populate(populateCheck);
+            }
             const dataEncrypted = (0, encryptedData_1.encryptedData)(records);
+            console.log(records);
             res.status(200).json({ data: dataEncrypted, code: 200, countJobs: countJobs });
         }
         catch (error) {
