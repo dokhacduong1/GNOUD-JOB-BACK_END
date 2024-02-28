@@ -19,3 +19,11 @@ export function convertSub(subtitle: string) : string{
     });
     return convertedSubtitle.join("")
 }
+
+
+export function slugCheckAB(unidecodeSlug: string, unidecodeElement: string): boolean {
+    const regex = new RegExp(unidecodeSlug);
+    //Kiểm tra xem element có bắt đầu bằng slug không
+    const regexCheck = regex.test(unidecodeElement);
+    return regexCheck;
+}

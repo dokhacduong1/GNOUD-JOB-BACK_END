@@ -10,7 +10,7 @@ export const auth = async function (req: Request, res: Response, next: any): Pro
 
     try {
         if (req.headers) {
-            
+
             //Đoạn này thấy điểm chung của token là khoảng trắng ta cắt khoảng trắng lấy vị trí mảng số 1 sẽ lấy được token
             const token: string = req.headers.authorization.split(" ")[1]
             //Tạo một mảng POPULATE có định dạng mặc định như dưới 

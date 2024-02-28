@@ -4,7 +4,7 @@ import { employerRoutes } from "./employer.routes";
 import { jobRoutes } from "./job.routes";
 import { jobCategoriesRoutes } from "./jobCategories.routes";
 import { uploadRoutes } from "./upload.routes";
-import { adminRoutes } from "./admins.routes";
+import { adminRoutes } from "./admins-user.routes";
 import { roleRoutes } from "./roles.routes";
 import * as middleware from "../../middlewares/admins/auth.middleware"
 const routesAdminVersion1 = (app : Express) : void => {

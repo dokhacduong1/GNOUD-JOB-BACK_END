@@ -3,6 +3,8 @@ import * as controller from "../../controllers/admins/jobsCategories.controller"
 import * as validates from "../../validates/admins/jobsCategories.validate"
 import multer from "multer"
 import * as uploadCloud from "../../middlewares/admins/uploadCloud.middleware"
+import * as uploadImgur from "../../middlewares/admins/uploadImgur.middleware"
+import * as uploadDriver from "../../middlewares/admins/uploadDriver.middleware"
 import * as middleware from "../../middlewares/admins/auth.middleware"
 const router: Router = Router();
 
@@ -10,7 +12,7 @@ router.get("/", controller.index)
 //Tạo mới dữ liệu
 router.post("/create",
     validates.createRecord,
-    uploadCloud.uplloadReact,
+    uploadDriver.uplloadReact,
     controller.create)
 //Thay đổi trạng thái dữ liệu
 router.patch("/change-status/:id",
@@ -23,7 +25,7 @@ router.patch("/change-multi",
 router.patch("/edit/:id",
     validates.edit,
     validates.editStatus,
-    uploadCloud.uplloadReact,
+    uploadDriver.uplloadReact,
     controller.edit);
 
 //Xóa mềm dữ liệu

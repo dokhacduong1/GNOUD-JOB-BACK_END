@@ -28,4 +28,5 @@ const express_1 = require("express");
 const controller = __importStar(require("../../controllers/clients/employers.controller"));
 const router = (0, express_1.Router)();
 router.get("/", controller.index);
+router.get("/count-job", controller.coutJobs);
 exports.employerRoutes = router;

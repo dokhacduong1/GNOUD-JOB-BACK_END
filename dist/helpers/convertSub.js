@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.convertSub = void 0;
+exports.slugCheckAB = exports.convertSub = void 0;
 function convertSub(subtitle) {
     const lines = subtitle.split('\n');
     let start = 2;
@@ -22,3 +22,9 @@ function convertSub(subtitle) {
     return convertedSubtitle.join("");
 }
 exports.convertSub = convertSub;
+function slugCheckAB(unidecodeSlug, unidecodeElement) {
+    const regex = new RegExp(unidecodeSlug);
+    const regexCheck = regex.test(unidecodeElement);
+    return regexCheck;
+}
+exports.slugCheckAB = slugCheckAB;

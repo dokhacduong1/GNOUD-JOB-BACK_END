@@ -13,5 +13,6 @@ export interface Find {
     token?: string,
     listApprovedUsers?: any,
     deleted? :boolean
+    countJobs?:number
 }
 

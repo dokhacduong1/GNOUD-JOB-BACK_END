@@ -27,7 +27,7 @@ const employer_routes_1 = require("./employer.routes");
 const job_routes_1 = require("./job.routes");
 const jobCategories_routes_1 = require("./jobCategories.routes");
 const upload_routes_1 = require("./upload.routes");
-const admins_routes_1 = require("./admins.routes");
+const admins_user_routes_1 = require("./admins-user.routes");
 const roles_routes_1 = require("./roles.routes");
 const middleware = __importStar(require("../../middlewares/admins/auth.middleware"));
 const routesAdminVersion1 = (app) => {
@@ -35,7 +35,7 @@ const routesAdminVersion1 = (app) => {
     app.use(version + "/employers", employer_routes_1.employerRoutes);
     app.use(version + "/jobs", middleware.auth, job_routes_1.jobRoutes);
     app.use(version + "/job-categories", middleware.auth, jobCategories_routes_1.jobCategoriesRoutes);
-    app.use(version + "/admins", admins_routes_1.adminRoutes);
+    app.use(version + "/admins", admins_user_routes_1.adminRoutes);
     app.use(version + "/uploads", upload_routes_1.uploadRoutes);
     app.use(version + "/roles", middleware.auth, roles_routes_1.roleRoutes);
 };

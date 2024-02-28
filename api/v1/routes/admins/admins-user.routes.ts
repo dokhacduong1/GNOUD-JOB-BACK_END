@@ -1,5 +1,5 @@
 import { Router } from "express";
-import * as controller from "../../controllers/admins/admins.controller";
+import * as controller from "../../controllers/admins/admins-user.controller";
 import * as validates from "../../validates/admins/admins.validate"
 import * as middleware from "../../middlewares/admins/auth.middleware"
 const router: Router = Router();

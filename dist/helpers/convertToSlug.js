@@ -6,7 +6,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.convertToSlug = void 0;
 const unidecode_1 = __importDefault(require("unidecode"));
 const convertToSlug = (text) => {
-    const stringUnidecode = (0, unidecode_1.default)(text).trim();
+    const stringUnidecode = (0, unidecode_1.default)(text).trim().toLowerCase();
     const slug = stringUnidecode.replace(/\s+/g, "-");
     return slug;
 };

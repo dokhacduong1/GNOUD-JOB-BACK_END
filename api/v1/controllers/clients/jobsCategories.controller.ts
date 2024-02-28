@@ -129,7 +129,7 @@ export const index = async function (req: Request, res: Response): Promise<void>
     } catch (error) {
         //Thông báo lỗi 500 đến người dùng server lỗi.
         console.error("Error in API:", error);
-        res.status(500).json({ error: "Internal Server Error" });
+        res.status(500).json({ error: "Internal Server Error",code:500 });
     }
 }
 

@@ -9,7 +9,11 @@ const permissionsCheck = [
     "roles-edit",
     "roles-delete",
     "roles-create",
-    "roles-view"
+    "roles-view",
+    "jobs-create",
+    "jobs-edit",
+    "jobs-delete",
+    "jobs-view",
 ];
 const createRecord = (req, res, next) => {
     const title = req.body.title || "";

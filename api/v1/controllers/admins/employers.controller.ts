@@ -58,7 +58,9 @@ export const index = async function (req: Request, res: Response): Promise<void>
             queryKeyword = req.query.keyword.toString() || "";
         }
 
-
+        if(req.query.findId){
+            find._id = req.query.findId.toString() || "";
+        }
 
         //Trước khi gán status vào find thì kiểm tra query có hợp lệ hoặc tồn tại hay không. (Chức Năng Check Trạng Thái)
         if (queryStatus && filterQueryStatus(queryStatus)) {
@@ -73,6 +75,7 @@ export const index = async function (req: Request, res: Response): Promise<void>
         //Đếm xem bảng record có bao nhiêu sản phẩm và check phân trang (Chức Năng Phân Trang)
         const countRecord = await Employer.countDocuments(find);
 
+        //Làm phân trang (Chức Năng Phân Trang)
         const objectPagination = filterQueryPagination(countRecord, queryPage, queryLimit);
 
         //Tạo một object gán sortKey , sortValue tìm được vào  (Chức Năng Sắp Xếp)
@@ -87,11 +90,21 @@ export const index = async function (req: Request, res: Response): Promise<void>
 
 
         //Tìm tất cả các công việc.
-        const records = await Employer.find(find)
+        let records = []
+        if (req.query.findAll) {
+            records = await Employer.find(find)
+            .sort(sort)
+            .select("-password -token");
+
+        }
+        else{
+            records = await Employer.find(find)
             .sort(sort)
             .limit(objectPagination.limitItem || 4)
             .skip(objectPagination.skip || 0)
             .select("-password -phoneNumber -listApprovedUsers -email -token");
+        }
+          
         //Mã hóa dữ liệu khi gửi đi
         const dataEncrypted = encryptedData(records)
 

@@ -48,6 +48,9 @@ const index = function (req, res) {
             if (req.query.keyword) {
                 queryKeyword = req.query.keyword.toString() || "";
             }
+            if (req.query.findId) {
+                find._id = req.query.findId.toString() || "";
+            }
             if (queryStatus && (0, filterQueryStatus_1.filterQueryStatus)(queryStatus)) {
                 find.status = queryStatus;
             }
@@ -62,11 +65,19 @@ const index = function (req, res) {
                     [querySortKey]: querySortValue
                 };
             }
-            const records = yield employers_model_1.default.find(find)
-                .sort(sort)
-                .limit(objectPagination.limitItem || 4)
-                .skip(objectPagination.skip || 0)
-                .select("-password -phoneNumber -listApprovedUsers -email -token");
+            let records = [];
+            if (req.query.findAll) {
+                records = yield employers_model_1.default.find(find)
+                    .sort(sort)
+                    .select("-password -token");
+            }
+            else {
+                records = yield employers_model_1.default.find(find)
+                    .sort(sort)
+                    .limit(objectPagination.limitItem || 4)
+                    .skip(objectPagination.skip || 0)
+                    .select("-password -phoneNumber -listApprovedUsers -email -token");
+            }
             const dataEncrypted = (0, encryptedData_1.encryptedData)(records);
             res.status(200).json({ data: dataEncrypted, code: 200 });
         }

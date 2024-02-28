@@ -8,7 +8,11 @@ const permissionsCheck = [
     "roles-edit",
     "roles-delete",
     "roles-create",
-    "roles-view"]
+    "roles-view",
+    "jobs-create",
+    "jobs-edit",
+    "jobs-delete",
+    "jobs-view",]
 export const createRecord = (req: Request, res: Response, next: any): void => {
     const title: string = req.body.title || "";
     //Nếu dữ liệu người dùng gửi lên là rỗng thì báo lỗi chưa có dữ liệu

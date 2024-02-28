@@ -12,12 +12,13 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.index = void 0;
+exports.coutJobs = exports.index = void 0;
 const employers_model_1 = __importDefault(require("../../../../models/employers.model"));
 const filterQueryStatus_1 = require("../../../../helpers/filterQueryStatus.");
 const filterQuerySearch_1 = require("../../../../helpers/filterQuerySearch");
 const filterQueryPagination_1 = require("../../../../helpers/filterQueryPagination.");
 const encryptedData_1 = require("../../../../helpers/encryptedData");
+const jobs_model_1 = __importDefault(require("../../../../models/jobs.model"));
 const index = function (req, res) {
     return __awaiter(this, void 0, void 0, function* () {
         try {
@@ -59,7 +60,7 @@ const index = function (req, res) {
             let sort = {};
             if (querySortKey && querySortValue) {
                 sort = {
-                    [querySortKey]: querySortValue
+                    [querySortKey]: querySortValue,
                 };
             }
             const records = yield employers_model_1.default.find(find)
@@ -77,3 +78,26 @@ const index = function (req, res) {
     });
 };
 exports.index = index;
+const coutJobs = function (req, res) {
+    return __awaiter(this, void 0, void 0, function* () {
+        try {
+            const find = {
+                deleted: false,
+                status: "active",
+            };
+            const records = yield employers_model_1.default.find(find).select("companyName image").sort({ companyName: 1 });
+            const convertDataPromises = records.map((record) => __awaiter(this, void 0, void 0, function* () {
+                const countJob = yield jobs_model_1.default.countDocuments({ employerId: record._id });
+                return Object.assign(Object.assign({}, record.toObject()), { ["countJobs"]: countJob });
+            }));
+            const convertData = yield Promise.all(convertDataPromises);
+            const dataEncrypted = (0, encryptedData_1.encryptedData)(convertData);
+            res.status(200).json({ data: dataEncrypted, code: 200 });
+        }
+        catch (error) {
+            console.error("Error in API:", error);
+            res.status(500).json({ error: "Internal Server Error" });
+        }
+    });
+};
+exports.coutJobs = coutJobs;

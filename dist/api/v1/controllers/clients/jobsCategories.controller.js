@@ -114,7 +114,7 @@ const index = function (req, res) {
         }
         catch (error) {
             console.error("Error in API:", error);
-            res.status(500).json({ error: "Internal Server Error" });
+            res.status(500).json({ error: "Internal Server Error", code: 500 });
         }
     });
 };
