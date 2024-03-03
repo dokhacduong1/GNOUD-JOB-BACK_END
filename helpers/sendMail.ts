@@ -1,4 +1,6 @@
 const nodemailer = require("nodemailer");
+const LINK = "http://34.87.54.148:3001"
+// const LINK = "http://localhost:3001"
 interface MailOptions {
   from: string;
   to: string;
@@ -104,8 +106,8 @@ export const sendMail = (
           <h3>Bạn vừa gửi yêu cầu cập nhật lại mật khẩu?</h3>
           <p>
             Click vào link sau để reset lại mật khẩu:
-            <a href="http://localhost:3000/reset-password/${tokenReset}"
-              >http://localhost:3000/reset-password/${tokenReset}</a
+            <a href=${LINK}/reset-password/${tokenReset}"
+              >${LINK}/reset-password/${tokenReset}</a
             >
           </p>
           <p>
@@ -292,8 +294,8 @@ export const sendMailEmployer = (
           <h3>Bạn vừa gửi yêu cầu cập nhật lại mật khẩu?</h3>
           <p>
             Click vào link sau để reset lại mật khẩu:
-            <a href="http://localhost:3000/nha-tuyen-dung/reset-password/${tokenReset}"
-              >http://localhost:3000/nha-tuyen-dung/reset-password/${tokenReset}</a
+            <a href="${LINK}/nha-tuyen-dung/reset-password/${tokenReset}"
+              >${LINK}/nha-tuyen-dung/reset-password/${tokenReset}</a
             >
           </p>
           <p>

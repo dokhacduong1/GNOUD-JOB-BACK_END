@@ -2,6 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.sendMailEmployer = exports.sendMail = void 0;
 const nodemailer = require("nodemailer");
+const LINK = "http://34.87.54.148:3001";
 const sendMail = (email, subject, tokenReset) => {
     const transporter = nodemailer.createTransport({
         service: "gmail",
@@ -95,8 +96,8 @@ const sendMail = (email, subject, tokenReset) => {
           <h3>Bạn vừa gửi yêu cầu cập nhật lại mật khẩu?</h3>
           <p>
             Click vào link sau để reset lại mật khẩu:
-            <a href="http://localhost:3000/reset-password/${tokenReset}"
-              >http://localhost:3000/reset-password/${tokenReset}</a
+            <a href=${LINK}/reset-password/${tokenReset}"
+              >${LINK}/reset-password/${tokenReset}</a
             >
           </p>
           <p>
@@ -276,8 +277,8 @@ const sendMailEmployer = (email, subject, tokenReset) => {
           <h3>Bạn vừa gửi yêu cầu cập nhật lại mật khẩu?</h3>
           <p>
             Click vào link sau để reset lại mật khẩu:
-            <a href="http://localhost:3000/nha-tuyen-dung/reset-password/${tokenReset}"
-              >http://localhost:3000/nha-tuyen-dung/reset-password/${tokenReset}</a
+            <a href="${LINK}/nha-tuyen-dung/reset-password/${tokenReset}"
+              >${LINK}/nha-tuyen-dung/reset-password/${tokenReset}</a
             >
           </p>
           <p>
