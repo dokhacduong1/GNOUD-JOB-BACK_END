@@ -106,7 +106,7 @@ export const sendMail = (
           <h3>Bạn vừa gửi yêu cầu cập nhật lại mật khẩu?</h3>
           <p>
             Click vào link sau để reset lại mật khẩu:
-            <a href=${LINK}/reset-password/${tokenReset}"
+            <a href="${LINK}/reset-password/${tokenReset}"
               >${LINK}/reset-password/${tokenReset}</a
             >
           </p>
