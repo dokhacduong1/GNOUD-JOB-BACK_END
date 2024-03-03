@@ -66,7 +66,9 @@ const index = function (req, res) {
                 const idCategories = yield jobCategories_model_1.default.findOne({
                     slug: keyword,
                 }).select("id");
-                find["job_categorie_id"] = idCategories.id;
+                if (idCategories) {
+                    find["job_categorie_id"] = idCategories.id;
+                }
             }
             if (queryStatus && (0, filterQueryStatus_1.filterQueryStatus)(queryStatus)) {
                 find["status"] = queryStatus;

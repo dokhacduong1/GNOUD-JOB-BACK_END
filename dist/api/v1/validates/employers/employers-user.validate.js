@@ -14,8 +14,9 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.changeEmailSuggestions = exports.changeJobSuggestions = exports.changeInfoUser = exports.changePassword = exports.allowSettingUser = exports.authen = exports.resetPassword = exports.checkToken = exports.forgotPassword = exports.login = exports.register = void 0;
 const user_model_1 = __importDefault(require("../../../../models/user.model"));
-const forgot_password_model_1 = __importDefault(require("../../../../models/forgot-password.model"));
 const md5_1 = __importDefault(require("md5"));
+const employers_model_1 = __importDefault(require("../../../../models/employers.model"));
+const forgot_password_employer_model_1 = __importDefault(require("../../../../models/forgot-password-employer.model"));
 function validatePassword(password) {
     if (password.length < 6) {
         return false;
@@ -34,12 +35,13 @@ function validateEmail(email) {
     return emailRegex.test(email);
 }
 const register = function (req, res, next) {
+    var _a, _b, _c, _d;
     return __awaiter(this, void 0, void 0, function* () {
         if (!validateEmail(req.body.email)) {
             res.status(401).json({ code: 401, error: "Email Không Hợp Lệ" });
             return;
         }
-        const checkEmail = yield user_model_1.default.findOne({
+        const checkEmail = yield employers_model_1.default.findOne({
             email: req.body.email,
             deleted: false,
         });
@@ -52,6 +54,40 @@ const register = function (req, res, next) {
                 code: 401,
                 error: "Mật khẩu phải có độ dài từ 6 đến 25 ký tự!",
             });
+            return;
+        }
+        if (req.body.password !== req.body.reEnterPassword) {
+            res.status(401).json({ code: 401, error: "Mật khẩu xác nhận chưa đúng!" });
+            return;
+        }
+        if (!((_b = (_a = req.body) === null || _a === void 0 ? void 0 : _a.address) === null || _b === void 0 ? void 0 : _b.city)) {
+            res.status(401).json({ code: 401, error: "Vui lòng chọn thành phố!" });
+            return;
+        }
+        if (!((_d = (_c = req.body) === null || _c === void 0 ? void 0 : _c.address) === null || _d === void 0 ? void 0 : _d.district)) {
+            res.status(401).json({ code: 401, error: "Vui lòng chọn quận/huyện!" });
+            return;
+        }
+        if (!req.body.companyName) {
+            res.status(401).json({ code: 401, error: "Vui lòng nhập tên công ty!" });
+            return;
+        }
+        if (!req.body.gender) {
+            res.status(401).json({ code: 401, error: "Vui lòng chọn giới tính!" });
+            return;
+        }
+        if (!req.body.phoneNumber) {
+            res.status(401).json({ code: 401, error: "Vui lòng nhập số điện thoại!" });
+            return;
+        }
+        if (!validatePhoneNumber(req.body.phoneNumber)) {
+            res.status(401).json({ code: 401, error: "Số điện thoại không hợp lệ!" });
+            return;
+        }
+        if (!req.body.level) {
+            res
+                .status(401)
+                .json({ code: 401, error: "Vui lòng nhập vị trí công tác!" });
             return;
         }
         if (!req.body.fullName) {
@@ -83,7 +119,7 @@ const forgotPassword = function (req, res, next) {
             res.status(401).json({ code: 401, error: "Email Không Hợp Lệ" });
             return;
         }
-        const record = yield forgot_password_model_1.default.findOne({
+        const record = yield forgot_password_employer_model_1.default.findOne({
             email: email,
         });
         if (record) {
@@ -109,7 +145,7 @@ const checkToken = function (req, res, next) {
             res.status(401).json({ error: "Vui lòng nhập token!" });
             return;
         }
-        const record = yield forgot_password_model_1.default.findOne({
+        const record = yield forgot_password_employer_model_1.default.findOne({
             tokenReset: req.body.tokenReset,
         });
         if (!record) {
@@ -129,8 +165,8 @@ const resetPassword = function (req, res, next) {
             res.status(401).json({ error: "Vui lòng nhập email!" });
             return;
         }
-        const record = yield forgot_password_model_1.default.findOne({
-            email: req.body.req.body.email,
+        const record = yield forgot_password_employer_model_1.default.findOne({
+            email: req.body.email,
         });
         if (!record) {
             res.status(401).json({
@@ -165,7 +201,7 @@ const resetPassword = function (req, res, next) {
 exports.resetPassword = resetPassword;
 const authen = function (req, res, next) {
     return __awaiter(this, void 0, void 0, function* () {
-        if (!req.body.token) {
+        if (!req.headers.authorization) {
             res.status(401).json({ code: 401, error: "Vui Lòng Nhập Token!" });
             return;
         }

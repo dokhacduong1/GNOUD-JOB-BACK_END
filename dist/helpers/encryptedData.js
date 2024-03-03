@@ -9,6 +9,9 @@ const dotenv_1 = __importDefault(require("dotenv"));
 dotenv_1.default.config();
 const secretKey = process.env.SECRET_KEY;
 function encryptedData(data) {
+    if (!data || !secretKey) {
+        throw new Error('Data or secret key is undefined');
+    }
     var ciphertext = crypto_js_1.default.AES.encrypt(JSON.stringify(data), secretKey).toString();
     return ciphertext;
 }

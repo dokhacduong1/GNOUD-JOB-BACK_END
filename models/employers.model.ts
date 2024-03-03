@@ -6,13 +6,22 @@ const employerSchema = new mongoose.Schema(
         email: String,
         password: String,
         companyName: String,
+        fullName: String,
         numberOfWorkers: Number,
         contactPersonName: String,
         phoneNumber: String,
-        address: String,
+        level: String,
+        address: 
+            {
+                city: String,
+                district: String,
+              
+            }
+        ,
         image : String,
         token : String,
         listApprovedUsers : Array,
+        gender: String,
         status: {
             type:String,
             default:"active"

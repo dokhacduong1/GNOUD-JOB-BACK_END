@@ -82,7 +82,10 @@ export const index = async function (
       const idCategories = await JobCategories.findOne({
         slug: keyword,
       }).select("id");
-      find["job_categorie_id"] = idCategories.id;
+      if (idCategories) {
+        find["job_categorie_id"] = idCategories.id;
+      }
+      
     }
 
     //Trước khi gán status vào find thì kiểm tra query có hợp lệ hoặc tồn tại hay không. (Chức Năng Check Trạng Thái)

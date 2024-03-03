@@ -33,6 +33,7 @@ const cors_1 = __importDefault(require("cors"));
 const database = __importStar(require("./config/database"));
 const index_routes_1 = __importDefault(require("./api/v1/routes/admins/index.routes"));
 const index_routes_2 = __importDefault(require("./api/v1/routes/clients/index.routes"));
+const index_routes_3 = __importDefault(require("./api/v1/routes/employers/index.routes"));
 const app = (0, express_1.default)();
 app.use(body_parser_1.default.json({ limit: '50mb' }));
 app.use((0, cors_1.default)({
@@ -43,6 +44,7 @@ dotenv_1.default.config();
 database.connect();
 (0, index_routes_1.default)(app);
 (0, index_routes_2.default)(app);
+(0, index_routes_3.default)(app);
 const port = process.env.PORT || 3001;
 app.listen(port, () => {
     console.log(`App Listening On Port ${port}`);

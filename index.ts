@@ -6,6 +6,7 @@ import cors from "cors"
 import * as database from "./config/database"
 import routesAdminVersion1 from "./api/v1/routes/admins/index.routes";
 import routesClientVersion1 from "./api/v1/routes/clients/index.routes";
+import routesEmployerVersion1 from "./api/v1/routes/employers/index.routes";
 
 
 //Tạo một đối tượng app
@@ -30,7 +31,8 @@ database.connect();
 routesAdminVersion1(app);
 //Nhúng app client của routes vào index
 routesClientVersion1(app);
-
+//Nhúng app employer của routes vào index
+routesEmployerVersion1(app);
 //Lấy port trong file env hoặc ko có mặc định cổng 3000
 const port: (number | string) = process.env.PORT || 3001;
 

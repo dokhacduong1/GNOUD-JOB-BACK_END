@@ -2,6 +2,8 @@ import { Request, Response } from "express";
 import User from "../../../../models/user.model";
 import ForgotPassword from "../../../../models/forgot-password.model";
 import md5 from "md5";
+import Employer from "../../../../models/employers.model";
+import ForgotPasswordEmployer from "../../../../models/forgot-password-employer.model";
 //Hàm này kiểm tra Password
 function validatePassword(password: string): boolean {
   // Ít nhất 8 ký tự
@@ -49,7 +51,7 @@ export const register = async function (
     return;
   }
   //Lọc email trong database
-  const checkEmail = await User.findOne({
+  const checkEmail = await Employer.findOne({
     email: req.body.email,
     deleted: false,
   });
@@ -65,6 +67,48 @@ export const register = async function (
       code: 401,
       error: "Mật khẩu phải có độ dài từ 6 đến 25 ký tự!",
     });
+    return;
+  }
+  //Kiểm tra xem password có đúng định dạng không
+  if (req.body.password !== req.body.reEnterPassword) {
+    res.status(401).json({ code: 401, error: "Mật khẩu xác nhận chưa đúng!" });
+    return;
+  }
+  //Check xem address có rỗng không
+  if (!req.body?.address?.city) {
+    res.status(401).json({ code: 401, error: "Vui lòng chọn thành phố!" });
+    return;
+  }
+  //Check xem address có rỗng không
+  if (!req.body?.address?.district) {
+    res.status(401).json({ code: 401, error: "Vui lòng chọn quận/huyện!" });
+    return;
+  }
+  //Check xem tên công ty có rỗng không
+  if (!req.body.companyName) {
+    res.status(401).json({ code: 401, error: "Vui lòng nhập tên công ty!" });
+    return;
+  }
+  //Check xem giới tính có rỗng không
+  if (!req.body.gender) {
+    res.status(401).json({ code: 401, error: "Vui lòng chọn giới tính!" });
+    return;
+  }
+  //Check xem số điện thoại có rỗng không
+  if (!req.body.phoneNumber) {
+    res.status(401).json({ code: 401, error: "Vui lòng nhập số điện thoại!" });
+    return;
+  }
+  //Check xem số điện thoại có hợp lệ không
+  if (!validatePhoneNumber(req.body.phoneNumber)) {
+    res.status(401).json({ code: 401, error: "Số điện thoại không hợp lệ!" });
+    return;
+  }
+  //Check xem level có rỗng không
+  if (!req.body.level) {
+    res
+      .status(401)
+      .json({ code: 401, error: "Vui lòng nhập vị trí công tác!" });
     return;
   }
   //Check xem fullName có rỗng không
@@ -107,7 +151,7 @@ export const forgotPassword = async function (
     res.status(401).json({ code: 401, error: "Email Không Hợp Lệ" });
     return;
   }
-  const record = await ForgotPassword.findOne({
+  const record = await ForgotPasswordEmployer.findOne({
     email: email,
   });
   //Check xem nếu người dùng đã gửi phải bắt người dùng đợi
@@ -143,7 +187,7 @@ export const checkToken = async function (
     res.status(401).json({ error: "Vui lòng nhập token!" });
     return;
   }
-  const record = await ForgotPassword.findOne({
+  const record = await ForgotPasswordEmployer.findOne({
     tokenReset: req.body.tokenReset,
   });
   if (!record) {
@@ -166,8 +210,8 @@ export const resetPassword = async function (
     res.status(401).json({ error: "Vui lòng nhập email!" });
     return;
   }
-  const record = await ForgotPassword.findOne({
-    email: req.body.req.body.email,
+  const record = await ForgotPasswordEmployer.findOne({
+    email: req.body.email,
   });
   if (!record) {
     res.status(401).json({
@@ -176,6 +220,7 @@ export const resetPassword = async function (
     });
     return;
   }
+
   if (!req.body.password) {
     res
       .status(401)
@@ -205,8 +250,9 @@ export const authen = async function (
   res: Response,
   next: any
 ): Promise<void> {
+
   //Kiểm tra xem người dùng nhập email hay chưa
-  if (!req.body.token) {
+  if (!req.headers.authorization) {
     res.status(401).json({ code: 401, error: "Vui Lòng Nhập Token!" });
     return;
   }
