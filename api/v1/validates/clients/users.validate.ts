@@ -167,7 +167,7 @@ export const resetPassword = async function (
     return;
   }
   const record = await ForgotPassword.findOne({
-    email: req.body.req.body.email,
+    email: req.body.email,
   });
   if (!record) {
     res.status(401).json({

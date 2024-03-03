@@ -130,7 +130,7 @@ const resetPassword = function (req, res, next) {
             return;
         }
         const record = yield forgot_password_model_1.default.findOne({
-            email: req.body.req.body.email,
+            email: req.body.email,
         });
         if (!record) {
             res.status(401).json({
