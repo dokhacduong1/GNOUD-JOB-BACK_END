@@ -12,15 +12,19 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.authen = exports.resetPassword = exports.checkToken = exports.forgotPassword = exports.login = exports.register = void 0;
+exports.verifyCodeSms = exports.verifyPassword = exports.sendEms = exports.changeInfoEmployer = exports.uploadAvatar = exports.authen = exports.resetPassword = exports.checkToken = exports.forgotPassword = exports.login = exports.register = void 0;
 const employers_model_1 = __importDefault(require("../../../../models/employers.model"));
 const md5_1 = __importDefault(require("md5"));
 const generateString_1 = require("../../../../helpers/generateString");
 const forgot_password_employer_model_1 = __importDefault(require("../../../../models/forgot-password-employer.model"));
 const sendMail_1 = require("../../../../helpers/sendMail");
+const employer_counter_1 = __importDefault(require("../../../../models/employer-counter"));
+const active_phone_employer_1 = __importDefault(require("../../../../models/active-phone-employer"));
+const smsPhoneSend_1 = require("../../../../helpers/smsPhoneSend");
 const register = function (req, res) {
     return __awaiter(this, void 0, void 0, function* () {
         try {
+            const counter = yield employer_counter_1.default.findOneAndUpdate({}, { $inc: { count: 1 } }, { new: true, upsert: true });
             const infoUser = {
                 address: req.body.address,
                 companyName: req.body.companyName,
@@ -32,6 +36,7 @@ const register = function (req, res) {
                 token: (0, generateString_1.generateRandomString)(30),
                 phoneNumber: req.body.phoneNumber,
                 email: req.body.email,
+                code: counter.count.toString(),
             };
             const userEmployer = new employers_model_1.default(infoUser);
             yield userEmployer.save();
@@ -203,6 +208,13 @@ const authen = function (req, res) {
                 id: userEmployer._id,
                 fullName: userEmployer.fullName,
                 email: userEmployer.email,
+                phoneNumber: userEmployer.phoneNumber,
+                code: userEmployer.code,
+                image: userEmployer.image,
+                gender: userEmployer.gender,
+                level: userEmployer.level,
+                cointsGP: userEmployer.cointsGP,
+                activePhone: userEmployer.activePhone,
             };
             res.status(200).json({
                 success: "Xác Thự Thành Công!",
@@ -218,3 +230,169 @@ const authen = function (req, res) {
     });
 };
 exports.authen = authen;
+const uploadAvatar = function (req, res) {
+    return __awaiter(this, void 0, void 0, function* () {
+        try {
+            const email = req["user"]["email"];
+            yield employers_model_1.default.updateOne({ email: email }, {
+                image: req.body["thumbUrl"],
+            });
+            res.status(200).json({ code: 200, success: `Thành Công!` });
+        }
+        catch (error) {
+            console.error("Error in API:", error);
+            res.status(500).json({ error: "Internal Server Error" });
+        }
+    });
+};
+exports.uploadAvatar = uploadAvatar;
+const changeInfoEmployer = function (req, res) {
+    return __awaiter(this, void 0, void 0, function* () {
+        try {
+            const email = req["user"]["email"];
+            const record = {
+                level: req.body.level,
+                gender: req.body.gender,
+                fullName: req.body.fullName,
+            };
+            if (req.body.linkedin) {
+                record.linkedin = req.body.linkedin;
+            }
+            yield employers_model_1.default.updateOne({
+                email: email,
+            }, record);
+            res.status(200).json({ code: 200, success: `Cập nhật dữ liệu thành công` });
+        }
+        catch (error) {
+            console.error("Error in API:", error);
+            res.status(500).json({ error: "Internal Server Error" });
+        }
+    });
+};
+exports.changeInfoEmployer = changeInfoEmployer;
+const sendEms = function (req, res) {
+    return __awaiter(this, void 0, void 0, function* () {
+        try {
+            const email = req["user"]["email"];
+            const phone = req.body.phone;
+            const tokenSMS = process.env.TOKEN_SPEEDSMS;
+            const responseSession = yield (0, smsPhoneSend_1.getSession)(tokenSMS);
+            if (responseSession["data"] && responseSession["data"]["verify"]) {
+                const session = responseSession["data"]["data"]["session"];
+                const responseSendCode = yield (0, smsPhoneSend_1.sendCode)(session, phone);
+                if (responseSendCode["data"] &&
+                    responseSendCode["data"]["status"] === "success") {
+                    const MSG_ID = responseSendCode["data"]["data"]["msg_id"];
+                    yield (0, smsPhoneSend_1.saveRecord)(email, MSG_ID, session, phone);
+                    res.status(200).json({
+                        code: 200,
+                        success: "Đã gửi tin nhắn thành công tới số điện thoại của bạn",
+                    });
+                    return;
+                }
+                if (responseSendCode["data"] &&
+                    responseSendCode["data"]["status"] === "error") {
+                    if (responseSendCode["data"]["message"] === "Invalid phone number format") {
+                        res
+                            .status(400)
+                            .json({ code: 400, error: "Số điện thoại không hợp lệ" });
+                        return;
+                    }
+                    if (responseSendCode["data"]["status"] === "error" &&
+                        responseSendCode["data"]["count_down"] > 0) {
+                        res.status(400).json({
+                            code: 400,
+                            error: `Bạn đã gửi tin nhắn quá nhanh xin vui thử lại sau ${responseSendCode["data"]["count_down"]} giây`,
+                        });
+                        return;
+                    }
+                }
+                res.status(400).json({
+                    code: 400,
+                    success: "Đã có một số lỗi gì đó vui lòng thử lại",
+                });
+            }
+        }
+        catch (error) {
+            console.error("Error in API:", error);
+            res.status(500).json({ error: "Internal Server Error" });
+        }
+    });
+};
+exports.sendEms = sendEms;
+const verifyPassword = function (req, res) {
+    return __awaiter(this, void 0, void 0, function* () {
+        try {
+            const password = req.body.password;
+            const email = req["user"]["email"];
+            const user = yield employers_model_1.default.findOne({
+                email: email,
+                password: (0, md5_1.default)(password),
+                status: "active",
+            });
+            if (!user) {
+                res.status(401).json({ code: 401, error: "Mật khẩu không đúng" });
+                return;
+            }
+            if (user["status"] !== "active") {
+                res.status(401).json({ code: 401, error: "Tài khoản đã bị khóa" });
+                return;
+            }
+            res.status(200).json({ code: 200, success: "Xác thực thành công" });
+        }
+        catch (error) {
+            console.error("Error in API:", error);
+            res.status(500).json({ error: "Internal Server Error" });
+        }
+    });
+};
+exports.verifyPassword = verifyPassword;
+const verifyCodeSms = function (req, res) {
+    var _a, _b, _c, _d;
+    return __awaiter(this, void 0, void 0, function* () {
+        try {
+            const { code, phone } = req.body;
+            const email = req["user"]["email"];
+            const record = yield active_phone_employer_1.default.findOne({ email });
+            if (!record) {
+                res.status(401).json({ code: 401, error: "Không tìm thấy thông tin!" });
+                return;
+            }
+            const responseVerifyCode = yield (0, smsPhoneSend_1.verifyCode)(record.phone, record.msg_id, code, record.session);
+            const responseData = (_a = responseVerifyCode === null || responseVerifyCode === void 0 ? void 0 : responseVerifyCode.data) === null || _a === void 0 ? void 0 : _a.data;
+            if (((_b = responseVerifyCode === null || responseVerifyCode === void 0 ? void 0 : responseVerifyCode.data) === null || _b === void 0 ? void 0 : _b.status) === "success") {
+                if ((responseData === null || responseData === void 0 ? void 0 : responseData.verified) === 1) {
+                    yield active_phone_employer_1.default.deleteOne({ email });
+                    yield employers_model_1.default.updateOne({ email }, { activePhone: true, phoneNumber: phone });
+                    res.status(200).json({ code: 200, success: "Xác thực thành công" });
+                    return;
+                }
+                else if ((responseData === null || responseData === void 0 ? void 0 : responseData.verified) === 2) {
+                    res.status(401).json({
+                        code: 401,
+                        error: "Tài khoản của bạn đã sai mã xác thực quá nhiều lần vui lòng thử lại sau",
+                    });
+                    return;
+                }
+            }
+            else if (((_c = responseVerifyCode === null || responseVerifyCode === void 0 ? void 0 : responseVerifyCode.data) === null || _c === void 0 ? void 0 : _c.status) === "error" &&
+                ((_d = responseVerifyCode === null || responseVerifyCode === void 0 ? void 0 : responseVerifyCode.data) === null || _d === void 0 ? void 0 : _d.message) === "session not found or expired") {
+                yield active_phone_employer_1.default.deleteOne({ email });
+                res
+                    .status(401)
+                    .json({ code: 401, error: "Mã xác thực đã hết hạn vui lòng thử lại" });
+                return;
+            }
+            res
+                .status(401)
+                .json({ code: 401, error: "Xác thực thất bại vui lòng thử lại" });
+            return;
+        }
+        catch (error) {
+            console.error("Error in API:", error);
+            res.status(500).json({ error: "Internal Server Error" });
+            return;
+        }
+    });
+};
+exports.verifyCodeSms = verifyCodeSms;

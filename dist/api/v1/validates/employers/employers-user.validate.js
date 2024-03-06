@@ -12,11 +12,12 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.changeEmailSuggestions = exports.changeJobSuggestions = exports.changeInfoUser = exports.changePassword = exports.allowSettingUser = exports.authen = exports.resetPassword = exports.checkToken = exports.forgotPassword = exports.login = exports.register = void 0;
+exports.verifyCodeSms = exports.verifyPassword = exports.sendEms = exports.changeEmailSuggestions = exports.changeJobSuggestions = exports.changeInfoUser = exports.changePassword = exports.allowSettingUser = exports.authen = exports.resetPassword = exports.checkToken = exports.forgotPassword = exports.login = exports.register = void 0;
 const user_model_1 = __importDefault(require("../../../../models/user.model"));
 const md5_1 = __importDefault(require("md5"));
 const employers_model_1 = __importDefault(require("../../../../models/employers.model"));
 const forgot_password_employer_model_1 = __importDefault(require("../../../../models/forgot-password-employer.model"));
+const active_phone_employer_1 = __importDefault(require("../../../../models/active-phone-employer"));
 function validatePassword(password) {
     if (password.length < 6) {
         return false;
@@ -30,10 +31,47 @@ function validatePhoneNumber(phone) {
     const phoneRegex = /^0\d{9}$/;
     return phoneRegex.test(phone);
 }
+function validatePhoneNumberInternational(phone) {
+    const phoneRegex = /^\+\d{2,3}\d{9,10}$/;
+    return phoneRegex.test(phone);
+}
 function validateEmail(email) {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     return emailRegex.test(email);
 }
+const checkActivePhone = (activePhone, res) => {
+    if (activePhone) {
+        return true;
+    }
+    return false;
+};
+const checkExistingPhone = (phone, currentUserPhone, res) => __awaiter(void 0, void 0, void 0, function* () {
+    if (phone == currentUserPhone) {
+        return false;
+    }
+    const checkPhone = yield employers_model_1.default.findOne({ phoneNumber: phone }).select("phone");
+    if (checkPhone) {
+        return true;
+    }
+    return false;
+});
+const checkRateLimit = (email, res) => __awaiter(void 0, void 0, void 0, function* () {
+    const record = yield active_phone_employer_1.default.findOne({ email: email });
+    if (record) {
+        const dateObject = new Date(record.timeWait);
+        const currentDate = new Date();
+        const timeDifference = currentDate.getTime() - dateObject.getTime();
+        const minutesDifference = Math.ceil(timeDifference / 1000);
+        if (minutesDifference < 180) {
+            return {
+                status: true,
+                minutesDifference: minutesDifference,
+            };
+        }
+    }
+    yield active_phone_employer_1.default.deleteOne({ email: email });
+    return false;
+});
 const register = function (req, res, next) {
     var _a, _b, _c, _d;
     return __awaiter(this, void 0, void 0, function* () {
@@ -276,19 +314,20 @@ const changeInfoUser = function (req, res, next) {
     return __awaiter(this, void 0, void 0, function* () {
         try {
             const fullName = req.body.fullName;
-            const phone = req.body.phone;
+            const gender = req.body.gender;
+            const level = req.body.level;
             if (!fullName) {
                 res.status(401).json({ code: 401, error: "Vui lòng nhập tên!" });
                 return;
             }
-            if (!phone) {
-                res
-                    .status(401)
-                    .json({ code: 401, error: "Vui lòng nhập số điện thoại!" });
+            if (!gender) {
+                res.status(401).json({ code: 401, error: "Vui lòng chọn giới tính!" });
                 return;
             }
-            if (!validatePhoneNumber(phone)) {
-                res.status(401).json({ code: 401, error: "Số điện thoại không hợp lệ!" });
+            if (!level) {
+                res
+                    .status(401)
+                    .json({ code: 401, error: "Vui lòng nhập vị trí công tác!" });
                 return;
             }
             next();
@@ -417,3 +456,106 @@ const changeEmailSuggestions = function (req, res, next) {
     });
 };
 exports.changeEmailSuggestions = changeEmailSuggestions;
+const sendEms = function (req, res, next) {
+    return __awaiter(this, void 0, void 0, function* () {
+        try {
+            const activePhone = req["user"]["activePhone"];
+            const email = req["user"]["email"];
+            let phone = req.body.phone;
+            if (checkActivePhone(activePhone, res)) {
+                res
+                    .status(401)
+                    .json({ code: 401, error: "Số điện thoại đã được xác nhận!" });
+                return;
+            }
+            const checkExistingPhoneOk = yield checkExistingPhone(phone, req["user"]["phoneNumber"], res);
+            if (checkExistingPhoneOk) {
+                res
+                    .status(401)
+                    .json({ code: 401, error: "Số điện thoại đã được đăng ký!" });
+                return;
+            }
+            let checkRateLimitOk = yield checkRateLimit(email, res);
+            if (checkRateLimitOk["status"]) {
+                res.status(401).json({
+                    code: 401,
+                    error: `Bạn không được gửi quá nhanh vui lòng thử Lại sau ${180 - checkRateLimitOk["minutesDifference"]} giây!`,
+                });
+                return;
+            }
+            if (!phone) {
+                res
+                    .status(401)
+                    .json({ code: 401, error: "Vui lòng nhập số điện thoại!" });
+                return;
+            }
+            req.body.phone = "+84" + req.body.phone;
+            if (!validatePhoneNumberInternational(req.body.phone)) {
+                res.status(401).json({ code: 401, error: "Số điện thoại không hợp lệ!" });
+                return;
+            }
+            next();
+        }
+        catch (error) {
+            console.error("Error in API:", error);
+            res.status(500).json({ error: "Internal Server Error" });
+        }
+    });
+};
+exports.sendEms = sendEms;
+const verifyPassword = function (req, res, next) {
+    return __awaiter(this, void 0, void 0, function* () {
+        try {
+            if (!req.body.password) {
+                res.status(401).json({ code: 401, error: "Vui lòng nhập mật khẩu!" });
+                return;
+            }
+            next();
+        }
+        catch (error) {
+            console.error("Error in API:", error);
+            res.status(500).json({ error: "Internal Server Error" });
+        }
+    });
+};
+exports.verifyPassword = verifyPassword;
+const verifyCodeSms = function (req, res, next) {
+    return __awaiter(this, void 0, void 0, function* () {
+        try {
+            const code = req.body.code;
+            const activePhone = req["user"]["activePhone"];
+            if (activePhone) {
+                res
+                    .status(401)
+                    .json({ code: 401, error: "Số điện thoại đã được xác nhận!" });
+                return;
+            }
+            if (!code) {
+                res.status(401).json({ code: 401, error: "Vui lòng nhập mã xác nhận!" });
+                return;
+            }
+            if (code.length !== 6) {
+                res
+                    .status(401)
+                    .json({ code: 401, error: "Mã xác nhận phải có 6 ký tự!" });
+                return;
+            }
+            if (!req.body.phone) {
+                res
+                    .status(401)
+                    .json({ code: 401, error: "Vui lòng nhập số điện thoại!" });
+                return;
+            }
+            if (!validatePhoneNumber(req.body.phone)) {
+                res.status(401).json({ code: 401, error: "Số điện thoại không hợp lệ!" });
+                return;
+            }
+            next();
+        }
+        catch (error) {
+            console.error("Error in API:", error);
+            res.status(500).json({ error: "Internal Server Error" });
+        }
+    });
+};
+exports.verifyCodeSms = verifyCodeSms;

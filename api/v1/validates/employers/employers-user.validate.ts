@@ -4,6 +4,8 @@ import ForgotPassword from "../../../../models/forgot-password.model";
 import md5 from "md5";
 import Employer from "../../../../models/employers.model";
 import ForgotPasswordEmployer from "../../../../models/forgot-password-employer.model";
+import ActivePhoneEmployer from "../../../../models/active-phone-employer";
+//Cả đoạn này hàm hỗ trợ
 //Hàm này kiểm tra Password
 function validatePassword(password: string): boolean {
   // Ít nhất 8 ký tự
@@ -30,7 +32,11 @@ function validatePhoneNumber(phone: string): boolean {
   const phoneRegex = /^0\d{9}$/;
   return phoneRegex.test(phone);
 }
-
+function validatePhoneNumberInternational(phone: string): boolean {
+  // Số điện thoại phải bắt đầu bằng dấu + và theo sau là 2 hoặc 3 số (mã quốc gia), sau đó là 9 hoặc 10 số còn lại
+  const phoneRegex = /^\+\d{2,3}\d{9,10}$/;
+  return phoneRegex.test(phone);
+}
 //Hàm này kiểm tra Email
 function validateEmail(email: string): boolean {
   // Biểu thức chính quy kiểm tra địa chỉ email
@@ -40,6 +46,57 @@ function validateEmail(email: string): boolean {
   return emailRegex.test(email);
 }
 
+const checkActivePhone = (activePhone: boolean, res: Response) => {
+  if (activePhone) {
+    return true;
+  }
+  return false;
+};
+const checkExistingPhone = async (
+  phone: string,
+  currentUserPhone: string,
+  res: Response
+) => {
+  if (phone == currentUserPhone) {
+    return false;
+  }
+
+  const checkPhone = await Employer.findOne({ phoneNumber: phone }).select(
+    "phone"
+  );
+
+  if (checkPhone) {
+    return true;
+  }
+  return false;
+};
+
+const checkRateLimit = async (email: string, res: Response) => {
+  const record = await ActivePhoneEmployer.findOne({ email: email });
+  if (record) {
+    //Lấy timeWait lưu trong database để tạo một đối tượng date
+    const dateObject: Date = new Date(record.timeWait);
+    // Thời điểm hiện tại
+    const currentDate: Date = new Date();
+    // Tính toán khoảng thời gian giữa hai thời điểm
+    const timeDifference: number = currentDate.getTime() - dateObject.getTime();
+    // Chuyển đổi khoảng thời gian từ milliseconds sang giây
+    const minutesDifference: number = Math.ceil(timeDifference / 1000);
+
+    //Check xem nếu người dùng đã gửi phải bắt người dùng đợi
+    if (minutesDifference < 180) {
+      return {
+        status: true,
+        minutesDifference: minutesDifference,
+      };
+    }
+  }
+  //Nếu không có thì trả về false và xóa hết dữ liệu trong database
+  await ActivePhoneEmployer.deleteOne({ email: email });
+  return false;
+};
+
+//--------------------------------------------------------------------------------
 export const register = async function (
   req: Request,
   res: Response,
@@ -250,7 +307,6 @@ export const authen = async function (
   res: Response,
   next: any
 ): Promise<void> {
-
   //Kiểm tra xem người dùng nhập email hay chưa
   if (!req.headers.authorization) {
     res.status(401).json({ code: 401, error: "Vui Lòng Nhập Token!" });
@@ -343,19 +399,20 @@ export const changeInfoUser = async function (
 ): Promise<void> {
   try {
     const fullName = req.body.fullName;
-    const phone = req.body.phone;
+    const gender = req.body.gender;
+    const level = req.body.level;
     if (!fullName) {
       res.status(401).json({ code: 401, error: "Vui lòng nhập tên!" });
       return;
     }
-    if (!phone) {
-      res
-        .status(401)
-        .json({ code: 401, error: "Vui lòng nhập số điện thoại!" });
+    if (!gender) {
+      res.status(401).json({ code: 401, error: "Vui lòng chọn giới tính!" });
       return;
     }
-    if (!validatePhoneNumber(phone)) {
-      res.status(401).json({ code: 401, error: "Số điện thoại không hợp lệ!" });
+    if (!level) {
+      res
+        .status(401)
+        .json({ code: 401, error: "Vui lòng nhập vị trí công tác!" });
       return;
     }
     next();
@@ -491,6 +548,129 @@ export const changeEmailSuggestions = async function (
         });
         return;
       }
+    }
+    next();
+  } catch (error) {
+    //Thông báo lỗi 500 đến người dùng server lỗi.
+    console.error("Error in API:", error);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+};
+
+export const sendEms = async function (
+  req: Request,
+  res: Response,
+  next: any
+): Promise<void> {
+  try {
+    const activePhone = req["user"]["activePhone"];
+    const email = req["user"]["email"];
+
+    let phone = req.body.phone;
+
+    if (checkActivePhone(activePhone, res)) {
+      res
+        .status(401)
+        .json({ code: 401, error: "Số điện thoại đã được xác nhận!" });
+      return;
+    }
+
+    //Kiểm tra xem số điện thoại đã được đăng ký chưa
+    const checkExistingPhoneOk = await checkExistingPhone(
+      phone,
+      req["user"]["phoneNumber"],
+      res
+    );
+    if (checkExistingPhoneOk) {
+      res
+        .status(401)
+        .json({ code: 401, error: "Số điện thoại đã được đăng ký!" });
+      return;
+    }
+
+    //Kiểm tra xem số điện thoại đã được gửi quá nhanh chưa
+    let checkRateLimitOk = await checkRateLimit(email, res);
+    if (checkRateLimitOk["status"]) {
+      res.status(401).json({
+        code: 401,
+        error: `Bạn không được gửi quá nhanh vui lòng thử Lại sau ${
+          180 - checkRateLimitOk["minutesDifference"]
+        } giây!`,
+      });
+      return;
+    }
+
+    if (!phone) {
+      res
+        .status(401)
+        .json({ code: 401, error: "Vui lòng nhập số điện thoại!" });
+      return;
+    }
+
+    req.body.phone = "+84" + req.body.phone;
+    if (!validatePhoneNumberInternational(req.body.phone)) {
+      res.status(401).json({ code: 401, error: "Số điện thoại không hợp lệ!" });
+      return;
+    }
+
+    next();
+  } catch (error) {
+    console.error("Error in API:", error);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+};
+
+export const verifyPassword = async function (
+  req: Request,
+  res: Response,
+  next: any
+): Promise<void> {
+  try {
+    if (!req.body.password) {
+      res.status(401).json({ code: 401, error: "Vui lòng nhập mật khẩu!" });
+      return;
+    }
+    next();
+  } catch (error) {
+    //Thông báo lỗi 500 đến người dùng server lỗi.
+    console.error("Error in API:", error);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+};
+
+export const verifyCodeSms = async function (
+  req: Request,
+  res: Response,
+  next: any
+): Promise<void> {
+  try {
+    const code = req.body.code;
+    const activePhone = req["user"]["activePhone"];
+    if (activePhone) {
+      res
+        .status(401)
+        .json({ code: 401, error: "Số điện thoại đã được xác nhận!" });
+      return;
+    }
+    if (!code) {
+      res.status(401).json({ code: 401, error: "Vui lòng nhập mã xác nhận!" });
+      return;
+    }
+    if (code.length !== 6) {
+      res
+        .status(401)
+        .json({ code: 401, error: "Mã xác nhận phải có 6 ký tự!" });
+      return;
+    }
+    if (!req.body.phone) {
+      res
+        .status(401)
+        .json({ code: 401, error: "Vui lòng nhập số điện thoại!" });
+      return;
+    }
+    if (!validatePhoneNumber(req.body.phone)) {
+      res.status(401).json({ code: 401, error: "Số điện thoại không hợp lệ!" });
+      return;
     }
     next();
   } catch (error) {

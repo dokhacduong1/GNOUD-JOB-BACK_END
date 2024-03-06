@@ -10,7 +10,12 @@ const employerSchema = new mongoose.Schema(
         numberOfWorkers: Number,
         contactPersonName: String,
         phoneNumber: String,
+        code: String,
         level: String,
+        activePhone:{
+            type:Boolean,
+            default:false
+        },
         address: 
             {
                 city: String,
@@ -18,13 +23,21 @@ const employerSchema = new mongoose.Schema(
               
             }
         ,
-        image : String,
+        image : {
+            type: String,
+            default: "https://lh3.googleusercontent.com/d/1ILtAxkD9TrKMtGQkxX9eThmrMjCp49W0"
+        },
         token : String,
         listApprovedUsers : Array,
         gender: String,
+
         status: {
             type:String,
             default:"active"
+        },
+        cointsGP : {
+            type:Number,
+            default:0
         },
         cvRecruitment: [
             {

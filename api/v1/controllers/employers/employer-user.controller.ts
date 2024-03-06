@@ -5,12 +5,27 @@ import md5 from "md5";
 import { generateRandomString } from "../../../../helpers/generateString";
 import ForgotPasswordEmployer from "../../../../models/forgot-password-employer.model";
 import { sendMailEmployer } from "../../../../helpers/sendMail";
+import EmployerCounter from "../../../../models/employer-counter";
+import axios from "axios";
+import ActivePhoneEmployer from "../../../../models/active-phone-employer";
+import {
+  getSession,
+  saveRecord,
+  sendCode,
+  verifyCode,
+} from "../../../../helpers/smsPhoneSend";
+
 // [POST] /api/v1/clients/employer/register
 export const register = async function (
   req: Request,
   res: Response
 ): Promise<void> {
   try {
+    const counter = await EmployerCounter.findOneAndUpdate(
+      {},
+      { $inc: { count: 1 } },
+      { new: true, upsert: true }
+    );
     //Lấy info người dùng gửi lên xong lưu vào object infoUser
     const infoUser: EmployerInterface.Find = {
       address: req.body.address,
@@ -23,7 +38,9 @@ export const register = async function (
       token: generateRandomString(30),
       phoneNumber: req.body.phoneNumber,
       email: req.body.email,
+      code: counter.count.toString(),
     };
+
     //Lưu tài khoản vừa tạo vào database
     const userEmployer = new Employer(infoUser);
     await userEmployer.save();
@@ -221,14 +238,13 @@ export const resetPassword = async function (
   }
 };
 
-
 // [POST] /api/v1/employers/users/authen
 export const authen = async function (
   req: Request,
   res: Response
 ): Promise<void> {
   try {
-    const token : string = req.headers.authorization.split(" ")[1]
+    const token: string = req.headers.authorization.split(" ")[1];
     //Tạo một mảng POPULATE có định dạng mặc định như dưới
 
     //Check xem trong databse có tồn tại token và mật khẩu có đúng hay không!
@@ -247,15 +263,19 @@ export const authen = async function (
       res.status(401).json({ error: "Tài Khoản Đã Bị Khóa!" });
       return;
     }
- 
 
-    
     //lấy ra thông tin cần thiết của user
     const recordNew = {
       id: userEmployer._id,
       fullName: userEmployer.fullName,
       email: userEmployer.email,
-     
+      phoneNumber: userEmployer.phoneNumber,
+      code: userEmployer.code,
+      image: userEmployer.image,
+      gender: userEmployer.gender,
+      level: userEmployer.level,
+      cointsGP: userEmployer.cointsGP,
+      activePhone: userEmployer.activePhone,
     };
 
     res.status(200).json({
@@ -268,5 +288,206 @@ export const authen = async function (
     //Thông báo lỗi 500 đến người dùng server lỗi.
     console.error("Error in API:", error);
     res.status(500).json({ error: "Internal Server Error" });
+  }
+};
+// [POST] /api/v1/employers/users/upload-avatar
+export const uploadAvatar = async function (
+  req: Request,
+  res: Response
+): Promise<void> {
+  try {
+    const email: string = req["user"]["email"];
+
+    await Employer.updateOne(
+      { email: email },
+      {
+        image: req.body["thumbUrl"],
+      }
+    );
+    res.status(200).json({ code: 200, success: `Thành Công!` });
+  } catch (error) {
+    console.error("Error in API:", error);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+};
+
+// [POST] /api/v1/employers/users/change-info-employer
+export const changeInfoEmployer = async function (
+  req: Request,
+  res: Response
+): Promise<void> {
+  try {
+    const email: string = req["user"]["email"];
+    const record: EmployerInterface.Find = {
+      level: req.body.level,
+      gender: req.body.gender,
+      fullName: req.body.fullName,
+    };
+    if (req.body.linkedin) {
+      record.linkedin = req.body.linkedin;
+    }
+    await Employer.updateOne(
+      {
+        email: email,
+      },
+      record
+    );
+    res.status(200).json({ code: 200, success: `Cập nhật dữ liệu thành công` });
+  } catch (error) {
+    console.error("Error in API:", error);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+};
+
+// [POST] /api/v1/employers/users/send-sms
+export const sendEms = async function (
+  req: Request,
+  res: Response
+): Promise<void> {
+  try {
+    const email: string = req["user"]["email"];
+    const phone: string = req.body.phone;
+    const tokenSMS: string = process.env.TOKEN_SPEEDSMS;
+
+    const responseSession = await getSession(tokenSMS);
+
+    if (responseSession["data"] && responseSession["data"]["verify"]) {
+      const session = responseSession["data"]["data"]["session"];
+      const responseSendCode = await sendCode(session, phone);
+
+      if (
+        responseSendCode["data"] &&
+        responseSendCode["data"]["status"] === "success"
+      ) {
+        const MSG_ID = responseSendCode["data"]["data"]["msg_id"];
+        await saveRecord(email, MSG_ID, session, phone);
+        res.status(200).json({
+          code: 200,
+          success: "Đã gửi tin nhắn thành công tới số điện thoại của bạn",
+        });
+        return;
+      }
+
+      if (
+        responseSendCode["data"] &&
+        responseSendCode["data"]["status"] === "error"
+      ) {
+        if (
+          responseSendCode["data"]["message"] === "Invalid phone number format"
+        ) {
+          res
+            .status(400)
+            .json({ code: 400, error: "Số điện thoại không hợp lệ" });
+          return;
+        }
+
+        if (
+          responseSendCode["data"]["status"] === "error" &&
+          responseSendCode["data"]["count_down"] > 0
+        ) {
+          res.status(400).json({
+            code: 400,
+            error: `Bạn đã gửi tin nhắn quá nhanh xin vui thử lại sau ${responseSendCode["data"]["count_down"]} giây`,
+          });
+          return;
+        }
+      }
+
+      res.status(400).json({
+        code: 400,
+        success: "Đã có một số lỗi gì đó vui lòng thử lại",
+      });
+    }
+  } catch (error) {
+    console.error("Error in API:", error);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+};
+
+export const verifyPassword = async function (
+  req: Request,
+  res: Response
+): Promise<void> {
+  try {
+    const password: string = req.body.password;
+    const email: string = req["user"]["email"];
+    const user = await Employer.findOne({
+      email: email,
+      password: md5(password),
+      status: "active",
+    });
+    if (!user) {
+      res.status(401).json({ code: 401, error: "Mật khẩu không đúng" });
+      return;
+    }
+    if (user["status"] !== "active") {
+      res.status(401).json({ code: 401, error: "Tài khoản đã bị khóa" });
+      return;
+    }
+    res.status(200).json({ code: 200, success: "Xác thực thành công" });
+  } catch (error) {
+    console.error("Error in API:", error);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+};
+
+export const verifyCodeSms = async function (
+  req: Request,
+  res: Response
+): Promise<void> {
+  try {
+    const { code, phone } = req.body;
+    const email: string = req["user"]["email"];
+
+    const record = await ActivePhoneEmployer.findOne({ email });
+    if (!record) {
+      res.status(401).json({ code: 401, error: "Không tìm thấy thông tin!" });
+      return;
+    }
+
+    const responseVerifyCode = await verifyCode(
+      record.phone,
+      record.msg_id,
+      code,
+      record.session
+    );
+    const responseData = responseVerifyCode?.data?.data;
+
+    if (responseVerifyCode?.data?.status === "success") {
+      if (responseData?.verified === 1) {
+        await ActivePhoneEmployer.deleteOne({ email });
+        await Employer.updateOne(
+          { email },
+          { activePhone: true, phoneNumber: phone }
+        );
+        res.status(200).json({ code: 200, success: "Xác thực thành công" });
+        return;
+      } else if (responseData?.verified === 2) {
+        res.status(401).json({
+          code: 401,
+          error:
+            "Tài khoản của bạn đã sai mã xác thực quá nhiều lần vui lòng thử lại sau",
+        });
+        return;
+      }
+    } else if (
+      responseVerifyCode?.data?.status === "error" &&
+      responseVerifyCode?.data?.message === "session not found or expired"
+    ) {
+      await ActivePhoneEmployer.deleteOne({ email });
+      res
+        .status(401)
+        .json({ code: 401, error: "Mã xác thực đã hết hạn vui lòng thử lại" });
+      return;
+    }
+
+    res
+      .status(401)
+      .json({ code: 401, error: "Xác thực thất bại vui lòng thử lại" });
+    return;
+  } catch (error) {
+    console.error("Error in API:", error);
+    res.status(500).json({ error: "Internal Server Error" });
+    return;
   }
 };
