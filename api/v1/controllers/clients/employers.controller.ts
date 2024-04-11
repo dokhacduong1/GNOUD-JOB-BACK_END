@@ -116,7 +116,7 @@ export const coutJobs = async function (
       status: "active",
     };
     //Lấy ra tất cả các công ty.
-    const records = await Employer.find(find).select("companyName image").sort({ companyName: 1 });
+    const records = await Employer.find(find).select("companyName image logoCompany").sort({ companyName: 1 });
  
     //Tìm tất cả các công việc.
     const convertDataPromises = records.map(async (record) => {

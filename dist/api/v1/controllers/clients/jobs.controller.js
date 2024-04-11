@@ -12,7 +12,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.mayBeInterested = exports.advancedSearch = exports.jobSearchPosition = exports.jobsByCategories = exports.jobSearch = exports.index = void 0;
+exports.getPdfToDriver = exports.userViewJob = exports.mayBeInterested = exports.advancedSearch = exports.jobSearchPosition = exports.jobsByCategories = exports.jobSearch = exports.index = void 0;
 const employers_model_1 = __importDefault(require("../../../../models/employers.model"));
 const filterQueryStatus_1 = require("../../../../helpers/filterQueryStatus.");
 const filterQuerySearch_1 = require("../../../../helpers/filterQuerySearch");
@@ -22,6 +22,7 @@ const encryptedData_1 = require("../../../../helpers/encryptedData");
 const jobCategories_model_1 = __importDefault(require("../../../../models/jobCategories.model"));
 const convertToSlug_1 = require("../../../../helpers/convertToSlug");
 const searchPro_1 = require("../../../../helpers/searchPro");
+const getFileToDriver_1 = require("../../../../helpers/getFileToDriver");
 const index = function (req, res) {
     return __awaiter(this, void 0, void 0, function* () {
         try {
@@ -81,10 +82,10 @@ const index = function (req, res) {
             }
             if (req.query.salaryKey && req.query.salaryValue) {
                 if (req.query.salaryKey === "gt") {
-                    find["salary"] = { $gt: parseInt(req.query.salaryValue.toString()) };
+                    find["salaryMax"] = { $gt: parseInt(req.query.salaryValue.toString()) };
                 }
                 if (req.query.salaryKey === "lt") {
-                    find["salary"] = { $lt: parseInt(req.query.salaryValue.toString()) };
+                    find["salaryMax"] = { $lt: parseInt(req.query.salaryValue.toString()) };
                 }
             }
             if (req.query.jobLevel) {
@@ -101,7 +102,7 @@ const index = function (req, res) {
             const populateCheck = [
                 {
                     path: "employerId",
-                    select: "image companyName address",
+                    select: "image companyName address logoCompany",
                     model: employers_model_1.default,
                 },
                 {
@@ -117,7 +118,7 @@ const index = function (req, res) {
                 .skip(objectPagination.skip || 0)
                 .select(selectItem)
                 .populate(populateCheck);
-            const convertData = records.map((record) => (Object.assign(Object.assign({}, record.toObject()), { companyName: record["employerId"]["companyName"], companyImage: record["employerId"]["image"] })));
+            const convertData = records.map((record) => (Object.assign(Object.assign({}, record.toObject()), { companyName: record["employerId"]["companyName"], companyImage: record["employerId"]["image"], logoCompany: record["employerId"]["logoCompany"] })));
             const dataEncrypted = (0, encryptedData_1.encryptedData)(convertData);
             res
                 .status(200)
@@ -271,12 +272,11 @@ const advancedSearch = function (req, res) {
             }
             if (req.query.select) {
                 select = req.query.select.toString();
-                console.log(select);
             }
             const populateCheck = [
                 {
                     path: "employerId",
-                    select: "image companyName address",
+                    select: "image companyName address logoCompany",
                     model: employers_model_1.default,
                 },
                 {
@@ -294,9 +294,11 @@ const advancedSearch = function (req, res) {
                 .limit(objectPagination.limitItem)
                 .skip(objectPagination.skip)
                 .select(select);
-            const convertData = records.map((record) => (Object.assign(Object.assign({}, record.toObject()), { companyName: record["employerId"]["companyName"], companyImage: record["employerId"]["image"] })));
+            const convertData = records.map((record) => (Object.assign(Object.assign({}, record.toObject()), { companyName: record["employerId"]["companyName"], companyImage: record["employerId"]["image"], logoCompany: record["employerId"]["logoCompany"] })));
             const dataEncrypted = (0, encryptedData_1.encryptedData)(convertData);
-            res.status(200).json({ data: dataEncrypted, code: 200, countJobs: countJobs });
+            res
+                .status(200)
+                .json({ data: dataEncrypted, code: 200, countJobs: countJobs });
         }
         catch (error) {
             console.error("Error in API:", error);
@@ -312,7 +314,7 @@ const mayBeInterested = function (req, res) {
             const populateCheck = [
                 {
                     path: "employerId",
-                    select: "image companyName address",
+                    select: "image companyName address logoCompany",
                     model: employers_model_1.default,
                 },
                 {
@@ -352,7 +354,7 @@ const mayBeInterested = function (req, res) {
                     .populate(populateCheck)
                     .select("-email -deleted -status -phone");
             }
-            const convertData = Object.assign(Object.assign({}, job.toObject()), { companyName: job["employerId"]["companyName"], companyImage: job["employerId"]["image"] });
+            const convertData = Object.assign(Object.assign({}, job.toObject()), { companyName: job["employerId"]["companyName"], companyImage: job["employerId"]["image"], logoCompany: job["employerId"]["logoCompany"] });
             res.status(200).json({ data: convertData, code: 200 });
         }
         catch (error) {
@@ -362,3 +364,44 @@ const mayBeInterested = function (req, res) {
     });
 };
 exports.mayBeInterested = mayBeInterested;
+const userViewJob = function (req, res) {
+    return __awaiter(this, void 0, void 0, function* () {
+        try {
+            const idUser = req.body.idUser;
+            const idJob = req.body.idJob;
+            const objectNew = {
+                idUser: idUser,
+                dataTime: new Date(),
+                buy: false,
+                follow: false,
+            };
+            yield jobs_model_1.default.updateOne({
+                _id: idJob,
+            }, {
+                $push: {
+                    listProfileViewJob: objectNew,
+                },
+            });
+            res.status(200).json({ data: "ok", code: 200 });
+        }
+        catch (error) {
+            console.error("Error in API:", error);
+            res.status(500).json({ error: "Internal Server Error" });
+        }
+    });
+};
+exports.userViewJob = userViewJob;
+const getPdfToDriver = function (req, res) {
+    return __awaiter(this, void 0, void 0, function* () {
+        try {
+            const id_file = req.body.id_file;
+            const base64 = yield (0, getFileToDriver_1.getFileDriverToBase64)(id_file);
+            res.status(200).json({ code: 200, data: base64 });
+        }
+        catch (error) {
+            console.error("Error in API:", error);
+            res.status(500).json({ error: "Internal Server Error" });
+        }
+    });
+};
+exports.getPdfToDriver = getPdfToDriver;

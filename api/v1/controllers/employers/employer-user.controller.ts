@@ -14,6 +14,8 @@ import {
   sendCode,
   verifyCode,
 } from "../../../../helpers/smsPhoneSend";
+import { POPULATE } from "../../interfaces/populate.interface";
+import JobCategories from "../../../../models/jobCategories.model";
 
 // [POST] /api/v1/clients/employer/register
 export const register = async function (
@@ -246,13 +248,20 @@ export const authen = async function (
   try {
     const token: string = req.headers.authorization.split(" ")[1];
     //Tạo một mảng POPULATE có định dạng mặc định như dưới
-
+    const populateCheck: POPULATE[] = [
+      {
+        path: "activityFieldList",
+        select: "title",
+        model: JobCategories,
+      }
+    ];
     //Check xem trong databse có tồn tại token và mật khẩu có đúng hay không!
     const userEmployer = await Employer.findOne({
       token: token,
     })
       .lean()
-      .select("-password -token");
+      .select("-password -token").populate(populateCheck);
+
     //Nếu không đúng thì return tài khoản mật khẩu ko đúng
     if (!userEmployer) {
       res.status(401).json({ error: "Xác Thực Thất Bại!" });
@@ -276,6 +285,19 @@ export const authen = async function (
       level: userEmployer.level,
       cointsGP: userEmployer.cointsGP,
       activePhone: userEmployer.activePhone,
+      companyName: userEmployer.companyName,
+      emailCompany: userEmployer.emailCompany || "- -",
+      addressCompany: userEmployer.addressCompany || "- -",
+      descriptionCompany: userEmployer.descriptionCompany || "- -",
+      phoneCompany: userEmployer.phoneCompany || "- -",
+      website: userEmployer.website || "- -",
+      numberOfWorkers: userEmployer.numberOfWorkers || "- -",
+      activityFieldList:userEmployer?.activityFieldList?.map(item=>item._id) || "- -",
+      activityFieldListName: userEmployer?.activityFieldList?.map(item=>item.title).join(", ") || "- -",
+      taxCodeCompany: userEmployer.taxCodeCompany || "- -",
+      specificAddressCompany: userEmployer.specificAddressCompany || "- -",
+      logoCompany: userEmployer.logoCompany || "",
+      
     };
 
     res.status(200).json({
@@ -339,6 +361,46 @@ export const changeInfoEmployer = async function (
   }
 };
 
+// [POST] /api/v1/employers/users/change-info-company
+export const changeInfoCompany = async function (
+  req: Request,
+  res: Response
+): Promise<void> {
+  try {
+    const email: string = req["user"]["email"];
+    console.log(req.body["thumbUrl"]);
+    const record = {
+      companyName: req.body.companyName,
+      emailCompany: req.body.emailCompany,
+      addressCompany: req.body.addressCompany,
+      phoneCompany: req.body.phoneCompany,
+      numberOfWorkers: req.body.numberOfWorkers,
+      activityFieldList: req.body.activityFieldList,
+      taxCodeCompany: req.body.taxCodeCompany,
+      specificAddressCompany: req.body.specificAddressCompany,
+
+    };
+    if(req.body?.website){
+      record["website"] = req.body.website;
+    }
+    if(req.body?.descriptionCompany){
+      record["descriptionCompany"] = req.body.descriptionCompany;
+    }
+    if(req.body["thumbUrl"]){
+      record["logoCompany"] = req.body["thumbUrl"];
+    }
+    await Employer.updateOne({
+      email: email,
+    }, record);
+
+    res.status(200).json({ code: 200, success:"Cập nhật dữ liệu thành công" });
+  } catch (error) {
+    console.error("Error in API:", error);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+}
+
+
 // [POST] /api/v1/employers/users/send-sms
 export const sendEms = async function (
   req: Request,
@@ -395,7 +457,7 @@ export const sendEms = async function (
 
       res.status(400).json({
         code: 400,
-        success: "Đã có một số lỗi gì đó vui lòng thử lại",
+        error: "Đã có một số lỗi gì đó vui lòng thử lại",
       });
     }
   } catch (error) {
@@ -489,5 +551,46 @@ export const verifyCodeSms = async function (
     console.error("Error in API:", error);
     res.status(500).json({ error: "Internal Server Error" });
     return;
+  }
+};
+
+// [POST] /api/v1/employers/users/change-password
+export const changePasswordEmployer = async function (
+  req: Request,
+  res: Response
+): Promise<void> {
+  try {
+    //Lấy ra mật khẩu mới
+    const newPassword = req.body.newPassword;
+    const email = req["user"].email;
+    const accept: boolean = req.body?.accept;
+    //Nếu có accpet thì tạo một token mới
+    let tokenNew: string = "";
+    if (accept) {
+      tokenNew = generateRandomString(30);
+      await Employer.updateOne(
+        { email: email },
+        {
+          password: md5(newPassword),
+          token: tokenNew,
+        }
+      );
+    } else {
+      await Employer.updateOne(
+        { email: email },
+        {
+          password: md5(newPassword),
+        }
+      );
+    }
+
+    res.status(200).json({
+      code: 200,
+      success: `Đổi mật khẩu thành công!`,
+      tokenNew: tokenNew,
+    });
+  } catch (error) {
+    console.error("Error in API:", error);
+    res.status(500).json({ error: "Internal Server Error" });
   }
 };

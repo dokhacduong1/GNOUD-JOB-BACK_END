@@ -11,6 +11,7 @@ export interface Find {
     ageMin?: number,
     ageMax?: number,
     gender?: string,
+
     educationalLevel?: string,
     workExperience?: string,
     presentationLanguage?: string,

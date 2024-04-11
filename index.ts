@@ -7,10 +7,34 @@ import * as database from "./config/database"
 import routesAdminVersion1 from "./api/v1/routes/admins/index.routes";
 import routesClientVersion1 from "./api/v1/routes/clients/index.routes";
 import routesEmployerVersion1 from "./api/v1/routes/employers/index.routes";
+import routesLocations from "./api/v1/routes/locations/index.routes";
+import { Server } from "socket.io";
+import http from "http"
 
+
+import routerSocketAll from "./socket/v1/routes/all/index-socket.routes";
 
 //Tạo một đối tượng app
 const app: Express = express();
+
+//Cấu hình để tạo một máy chủ HTTP mới
+const server = http.createServer(app);
+
+//Tạo một đối tượng io để sử dụng socket.io
+const io = new Server(server, {
+  cors: {
+    origin: "http://localhost:3000",
+    methods: ["GET", "POST"]
+  }
+});
+
+routerSocketAll(io)
+
+// Thiết lập listener cho sự kiện 'connection'
+
+
+//Cấu hình để sử dụng socket.io
+app.set('socketio', io);
 
 //Cấu hình để nhận data body khi request
 app.use(bodyParser.json({ limit: '50mb' }))
@@ -33,12 +57,15 @@ routesAdminVersion1(app);
 routesClientVersion1(app);
 //Nhúng app employer của routes vào index
 routesEmployerVersion1(app);
+//Nhúng app location của routes vào index
+routesLocations(app);
 //Lấy port trong file env hoặc ko có mặc định cổng 3000
 const port: (number | string) = process.env.PORT || 3001;
 
 
+
 //Express lắng nghe cổng của bạn nó sẽ tạo ra một cổn cho bạn chỉ định
-app.listen(port, (): void => {
+server.listen(port, (): void => {
     console.log(`App Listening On Port ${port}`)
 })
 

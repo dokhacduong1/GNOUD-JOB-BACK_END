@@ -12,6 +12,7 @@ import JobCategories from "../../../../models/jobCategories.model";
 import { convertToSlug } from "../../../../helpers/convertToSlug";
 
 import { searchPro } from "../../../../helpers/searchPro";
+import { getFileDriverToBase64 } from "../../../../helpers/getFileToDriver";
 
 // [GET] /api/v1/client/jobs/index/
 //VD: //VD: {{BASE_URL}}/api/v1/client/jobs?page=1&limit=7&sortKey=title&sortValue=asc&status=active&featured=true&salaryKey=gt&salaryValue=1000&jobLevel=Intern&occupationKey=software-development
@@ -85,7 +86,6 @@ export const index = async function (
       if (idCategories) {
         find["job_categorie_id"] = idCategories.id;
       }
-      
     }
 
     //Trước khi gán status vào find thì kiểm tra query có hợp lệ hoặc tồn tại hay không. (Chức Năng Check Trạng Thái)
@@ -107,11 +107,11 @@ export const index = async function (
     if (req.query.salaryKey && req.query.salaryValue) {
       //Nếu người dùng gửi lên key là gt người ta muốn check giá lơn hơn một giá trị nào đó
       if (req.query.salaryKey === "gt") {
-        find["salary"] = { $gt: parseInt(req.query.salaryValue.toString()) };
+        find["salaryMax"] = { $gt: parseInt(req.query.salaryValue.toString()) };
       }
       //Nếu người dùng gửi lên key là gt người ta muốn check giá nhỏ hơn một giá trị nào đó
       if (req.query.salaryKey === "lt") {
-        find["salary"] = { $lt: parseInt(req.query.salaryValue.toString()) };
+        find["salaryMax"] = { $lt: parseInt(req.query.salaryValue.toString()) };
       }
     }
 
@@ -141,7 +141,7 @@ export const index = async function (
     const populateCheck: POPULATE[] = [
       {
         path: "employerId",
-        select: "image companyName address",
+        select: "image companyName address logoCompany",
         model: Employer,
       },
       {
@@ -165,6 +165,7 @@ export const index = async function (
       ...record.toObject(),
       companyName: record["employerId"]["companyName"],
       companyImage: record["employerId"]["image"],
+      logoCompany: record["employerId"]["logoCompany"],
     }));
     //Mã hóa dữ liệu khi gửi đi
     const dataEncrypted = encryptedData(convertData);
@@ -334,7 +335,7 @@ export const advancedSearch = async function (
     if (req.query.limit) {
       queryLimit = parseInt(req.query.limit.toString());
     }
-   
+
     //Tìm kiếu theo title công việc
     if (req.query.keyword) {
       //Lấy ra key word của người dùng gửi lên
@@ -368,14 +369,13 @@ export const advancedSearch = async function (
     }
     if (req.query.select) {
       select = req.query.select.toString();
-      console.log(select);
     }
 
     //Tạo một mảng POPULATE có định dạng mặc định như dưới
     const populateCheck: POPULATE[] = [
       {
         path: "employerId",
-        select: "image companyName address",
+        select: "image companyName address logoCompany",
         model: Employer,
       },
       {
@@ -384,14 +384,14 @@ export const advancedSearch = async function (
         model: JobCategories,
       },
     ];
-   //Đếm xem bảng record có bao nhiêu sản phẩm và check phân trang (Chức Năng Phân Trang)
-   const countRecord = await Job.countDocuments(find);
+    //Đếm xem bảng record có bao nhiêu sản phẩm và check phân trang (Chức Năng Phân Trang)
+    const countRecord = await Job.countDocuments(find);
 
-   const objectPagination = filterQueryPagination(
-     countRecord,
-     queryPage,
-     queryLimit
-   );
+    const objectPagination = filterQueryPagination(
+      countRecord,
+      queryPage,
+      queryLimit
+    );
 
     //Check xem có bao job để phân trang
     const countJobs: number = Math.round(countRecord / queryLimit);
@@ -406,9 +406,12 @@ export const advancedSearch = async function (
       ...record.toObject(),
       companyName: record["employerId"]["companyName"],
       companyImage: record["employerId"]["image"],
+      logoCompany: record["employerId"]["logoCompany"],
     }));
     const dataEncrypted = encryptedData(convertData);
-    res.status(200).json({ data: dataEncrypted, code: 200,countJobs:countJobs });
+    res
+      .status(200)
+      .json({ data: dataEncrypted, code: 200, countJobs: countJobs });
   } catch (error) {
     console.error("Error in API:", error);
     res.status(500).json({ error: "Internal Server Error" });
@@ -425,7 +428,7 @@ export const mayBeInterested = async function (
     const populateCheck: POPULATE[] = [
       {
         path: "employerId",
-        select: "image companyName address",
+        select: "image companyName address logoCompany",
         model: Employer,
       },
       {
@@ -473,8 +476,57 @@ export const mayBeInterested = async function (
       ...job.toObject(),
       companyName: job["employerId"]["companyName"],
       companyImage: job["employerId"]["image"],
+      logoCompany: job["employerId"]["logoCompany"],
     };
     res.status(200).json({ data: convertData, code: 200 });
+  } catch (error) {
+    console.error("Error in API:", error);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+};
+
+// [POST] /api/v1/client/jobs/user-view-job
+export const userViewJob = async function (
+  req: Request,
+  res: Response
+): Promise<void> {
+  try {
+    const idUser = req.body.idUser;
+    const idJob = req.body.idJob;
+    const objectNew = {
+      idUser: idUser,
+      dataTime: new Date(),
+      buy: false,
+      follow: false,
+    }
+   
+    await Job.updateOne(
+      {
+        _id: idJob,
+      },
+      {
+        $push: {
+          listProfileViewJob: objectNew,
+        },
+      }
+    );
+
+    res.status(200).json({ data: "ok", code: 200 });
+  } catch (error) {
+    console.error("Error in API:", error);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+};
+
+
+export const getPdfToDriver = async function (
+  req: Request,
+  res: Response
+): Promise<void> {
+  try {
+    const id_file = req.body.id_file;
+    const base64 = await getFileDriverToBase64(id_file);
+    res.status(200).json({ code: 200, data: base64 });
   } catch (error) {
     console.error("Error in API:", error);
     res.status(500).json({ error: "Internal Server Error" });

@@ -12,7 +12,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.verifyCodeSms = exports.verifyPassword = exports.sendEms = exports.changeInfoEmployer = exports.uploadAvatar = exports.authen = exports.resetPassword = exports.checkToken = exports.forgotPassword = exports.login = exports.register = void 0;
+exports.changePasswordEmployer = exports.verifyCodeSms = exports.verifyPassword = exports.sendEms = exports.changeInfoCompany = exports.changeInfoEmployer = exports.uploadAvatar = exports.authen = exports.resetPassword = exports.checkToken = exports.forgotPassword = exports.login = exports.register = void 0;
 const employers_model_1 = __importDefault(require("../../../../models/employers.model"));
 const md5_1 = __importDefault(require("md5"));
 const generateString_1 = require("../../../../helpers/generateString");
@@ -21,6 +21,7 @@ const sendMail_1 = require("../../../../helpers/sendMail");
 const employer_counter_1 = __importDefault(require("../../../../models/employer-counter"));
 const active_phone_employer_1 = __importDefault(require("../../../../models/active-phone-employer"));
 const smsPhoneSend_1 = require("../../../../helpers/smsPhoneSend");
+const jobCategories_model_1 = __importDefault(require("../../../../models/jobCategories.model"));
 const register = function (req, res) {
     return __awaiter(this, void 0, void 0, function* () {
         try {
@@ -188,14 +189,22 @@ const resetPassword = function (req, res) {
 };
 exports.resetPassword = resetPassword;
 const authen = function (req, res) {
+    var _a, _b;
     return __awaiter(this, void 0, void 0, function* () {
         try {
             const token = req.headers.authorization.split(" ")[1];
+            const populateCheck = [
+                {
+                    path: "activityFieldList",
+                    select: "title",
+                    model: jobCategories_model_1.default,
+                }
+            ];
             const userEmployer = yield employers_model_1.default.findOne({
                 token: token,
             })
                 .lean()
-                .select("-password -token");
+                .select("-password -token").populate(populateCheck);
             if (!userEmployer) {
                 res.status(401).json({ error: "Xác Thực Thất Bại!" });
                 return;
@@ -215,6 +224,18 @@ const authen = function (req, res) {
                 level: userEmployer.level,
                 cointsGP: userEmployer.cointsGP,
                 activePhone: userEmployer.activePhone,
+                companyName: userEmployer.companyName,
+                emailCompany: userEmployer.emailCompany || "- -",
+                addressCompany: userEmployer.addressCompany || "- -",
+                descriptionCompany: userEmployer.descriptionCompany || "- -",
+                phoneCompany: userEmployer.phoneCompany || "- -",
+                website: userEmployer.website || "- -",
+                numberOfWorkers: userEmployer.numberOfWorkers || "- -",
+                activityFieldList: ((_a = userEmployer === null || userEmployer === void 0 ? void 0 : userEmployer.activityFieldList) === null || _a === void 0 ? void 0 : _a.map(item => item._id)) || "- -",
+                activityFieldListName: ((_b = userEmployer === null || userEmployer === void 0 ? void 0 : userEmployer.activityFieldList) === null || _b === void 0 ? void 0 : _b.map(item => item.title).join(", ")) || "- -",
+                taxCodeCompany: userEmployer.taxCodeCompany || "- -",
+                specificAddressCompany: userEmployer.specificAddressCompany || "- -",
+                logoCompany: userEmployer.logoCompany || "",
             };
             res.status(200).json({
                 success: "Xác Thự Thành Công!",
@@ -270,6 +291,43 @@ const changeInfoEmployer = function (req, res) {
     });
 };
 exports.changeInfoEmployer = changeInfoEmployer;
+const changeInfoCompany = function (req, res) {
+    var _a, _b;
+    return __awaiter(this, void 0, void 0, function* () {
+        try {
+            const email = req["user"]["email"];
+            console.log(req.body["thumbUrl"]);
+            const record = {
+                companyName: req.body.companyName,
+                emailCompany: req.body.emailCompany,
+                addressCompany: req.body.addressCompany,
+                phoneCompany: req.body.phoneCompany,
+                numberOfWorkers: req.body.numberOfWorkers,
+                activityFieldList: req.body.activityFieldList,
+                taxCodeCompany: req.body.taxCodeCompany,
+                specificAddressCompany: req.body.specificAddressCompany,
+            };
+            if ((_a = req.body) === null || _a === void 0 ? void 0 : _a.website) {
+                record["website"] = req.body.website;
+            }
+            if ((_b = req.body) === null || _b === void 0 ? void 0 : _b.descriptionCompany) {
+                record["descriptionCompany"] = req.body.descriptionCompany;
+            }
+            if (req.body["thumbUrl"]) {
+                record["logoCompany"] = req.body["thumbUrl"];
+            }
+            yield employers_model_1.default.updateOne({
+                email: email,
+            }, record);
+            res.status(200).json({ code: 200, success: "Cập nhật dữ liệu thành công" });
+        }
+        catch (error) {
+            console.error("Error in API:", error);
+            res.status(500).json({ error: "Internal Server Error" });
+        }
+    });
+};
+exports.changeInfoCompany = changeInfoCompany;
 const sendEms = function (req, res) {
     return __awaiter(this, void 0, void 0, function* () {
         try {
@@ -309,7 +367,7 @@ const sendEms = function (req, res) {
                 }
                 res.status(400).json({
                     code: 400,
-                    success: "Đã có một số lỗi gì đó vui lòng thử lại",
+                    error: "Đã có một số lỗi gì đó vui lòng thử lại",
                 });
             }
         }
@@ -396,3 +454,36 @@ const verifyCodeSms = function (req, res) {
     });
 };
 exports.verifyCodeSms = verifyCodeSms;
+const changePasswordEmployer = function (req, res) {
+    var _a;
+    return __awaiter(this, void 0, void 0, function* () {
+        try {
+            const newPassword = req.body.newPassword;
+            const email = req["user"].email;
+            const accept = (_a = req.body) === null || _a === void 0 ? void 0 : _a.accept;
+            let tokenNew = "";
+            if (accept) {
+                tokenNew = (0, generateString_1.generateRandomString)(30);
+                yield employers_model_1.default.updateOne({ email: email }, {
+                    password: (0, md5_1.default)(newPassword),
+                    token: tokenNew,
+                });
+            }
+            else {
+                yield employers_model_1.default.updateOne({ email: email }, {
+                    password: (0, md5_1.default)(newPassword),
+                });
+            }
+            res.status(200).json({
+                code: 200,
+                success: `Đổi mật khẩu thành công!`,
+                tokenNew: tokenNew,
+            });
+        }
+        catch (error) {
+            console.error("Error in API:", error);
+            res.status(500).json({ error: "Internal Server Error" });
+        }
+    });
+};
+exports.changePasswordEmployer = changePasswordEmployer;

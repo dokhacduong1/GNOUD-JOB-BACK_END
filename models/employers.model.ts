@@ -3,15 +3,35 @@ import mongoose from "mongoose";
 
 const employerSchema = new mongoose.Schema(
     {
+        //Đoạn này là chứa thông tin tài khoản
         email: String,
         password: String,
-        companyName: String,
         fullName: String,
-        numberOfWorkers: Number,
         contactPersonName: String,
         phoneNumber: String,
         code: String,
         level: String,
+        token : String,
+        listApprovedUsers : Array,
+        gender: String,
+        //ĐOạn này là chứa thông tin công ty
+        companyName: String,
+        emailCompany:String,
+        addressCompany: String,
+        descriptionCompany: String,
+        phoneCompany: String,
+        website: String,
+        numberOfWorkers: String,
+        taxCodeCompany: String,
+        specificAddressCompany: String,
+        activityFieldList:{
+            type: Array,
+            default: []
+        },
+        logoCompany: {
+            type: String,
+            default: "https://res.cloudinary.com/dmmz10szo/image/upload/v1710149283/GNOUD_2_pxldrg.png"
+        },
         activePhone:{
             type:Boolean,
             default:false
@@ -27,10 +47,10 @@ const employerSchema = new mongoose.Schema(
             type: String,
             default: "https://lh3.googleusercontent.com/d/1ILtAxkD9TrKMtGQkxX9eThmrMjCp49W0"
         },
-        token : String,
-        listApprovedUsers : Array,
-        gender: String,
-
+        position: {
+            type: Number,
+            default: 1
+        },
         status: {
             type:String,
             default:"active"

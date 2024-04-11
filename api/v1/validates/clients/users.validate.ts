@@ -1,7 +1,9 @@
 import { Request, Response } from "express";
 import User from "../../../../models/user.model";
 import ForgotPassword from "../../../../models/forgot-password.model";
-import md5 from "md5";
+import * as md5 from "md5";
+import Job from "../../../../models/jobs.model";
+
 //Hàm này kiểm tra Password
 function validatePassword(password: string): boolean {
   // Ít nhất 8 ký tự
@@ -296,8 +298,9 @@ export const changeInfoUser = async function (
   next: any
 ): Promise<void> {
   try {
-    const fullName = req.body.fullName;
-    const phone = req.body.phone;
+    const fullName: string = req.body.fullName;
+    const phone: string = req.body.phone;
+    const address: {} = req.body.address;
     if (!fullName) {
       res.status(401).json({ code: 401, error: "Vui lòng nhập tên!" });
       return;
@@ -310,6 +313,18 @@ export const changeInfoUser = async function (
     }
     if (!validatePhoneNumber(phone)) {
       res.status(401).json({ code: 401, error: "Số điện thoại không hợp lệ!" });
+      return;
+    }
+    if (Object.keys(address).length === 0) {
+      res.status(401).json({ code: 401, error: "Vui lòng nhập địa chỉ!" });
+      return;
+    }
+    if (!address["city"]) {
+      res.status(401).json({ code: 401, error: "Vui lòng nhập thành phố!" });
+      return;
+    }
+    if (!address["district"]) {
+      res.status(401).json({ code: 401, error: "Vui lòng nhập quận/huyện!" });
       return;
     }
     next();
@@ -334,6 +349,7 @@ export const changeJobSuggestions = async function (
       yearsOfExperience,
       desiredSalary,
       workAddress,
+      dateOfBirth,
     } = req.body;
 
     if (!gender) {
@@ -410,6 +426,13 @@ export const changeJobSuggestions = async function (
       });
       return;
     }
+    if (!dateOfBirth) {
+      res.status(401).json({
+        code: 401,
+        error: "Vui lòng chọn ngày sinh!",
+      });
+      return;
+    }
     next();
   } catch (error) {
     //Thông báo lỗi 500 đến người dùng server lỗi.
@@ -452,4 +475,109 @@ export const changeEmailSuggestions = async function (
     console.error("Error in API:", error);
     res.status(500).json({ error: "Internal Server Error" });
   }
+};
+
+export const recruitmentJob = async function (
+  req: Request,
+  res: Response,
+  next: any
+): Promise<void> {
+  const idJob = req.body.idJob;
+  if (!req.body.phone) {
+    res.status(401).json({ code: 401, error: "Vui lòng nhập số điện thoại!" });
+    return;
+  }
+  if (!validatePhoneNumber(req.body.phone)) {
+    res.status(401).json({ code: 401, error: "Số điện thoại không hợp lệ!" });
+    return;
+  }
+  if (!req.body.email) {
+    res.status(401).json({ code: 401, error: "Vui lòng nhập email!" });
+    return;
+  }
+  if (!req.body.idJob) {
+    res.status(401).json({ code: 401, error: "Vui lòng nhập jobIdd!" });
+    return;
+  }
+  //Check xem đã ứng tuyển chưa
+  const exitsRequirement = await Job.findOne({
+    _id: idJob,
+    "listProfileRequirement.email": req["user"].email,
+  });
+  if (exitsRequirement) {
+    res
+      .status(401)
+      .json({ code: 401, error: "Bạn đã ứng tuyển công việc này!" });
+    return;
+  }
+  next();
+};
+
+export const uploadCv = async function (
+  req: Request,
+  res: Response,
+  next: any
+): Promise<void> {
+  const user = req["user"];
+  const fileName = req.body.fileName;
+  if (!fileName) {
+    res.status(401).json({ code: 401, error: "Vui lòng chọn file!" });
+    return;
+  }
+  const exitedCv = user.cv.find((cv) => cv.nameFile === fileName);
+  if (exitedCv) {
+    res.status(401).json({ code: 401, error: "File đã tồn tại!" });
+    return;
+  }
+  next();
+};
+
+export const editCvByUser = async function (
+  req: Request,
+  res: Response,
+  next: any
+): Promise<void> {
+  // Định nghĩa kiểu dữ liệu cho CV
+  interface ICv {
+    idFile: string;
+    nameFile: string;
+  }
+
+  // Định nghĩa kiểu dữ liệu cho User
+  interface IUser {
+    cv: ICv[];
+  }
+  // Lấy thông tin người dùng từ request
+  const user: IUser = req["user"];
+
+  // Lấy idFile và newNameCv từ body của request
+  const idFile: string = req.body.idFile;
+  const newNameCv: string = req.body.newNameCv;
+
+  // Kiểm tra xem idFile có tồn tại không
+  if (!idFile) {
+    res.status(401).json({ code: 401, error: "Vui lòng chọn file!" });
+    return;
+  }
+
+  // Kiểm tra xem newNameCv có tồn tại không
+  if (!newNameCv) {
+    res.status(401).json({ code: 401, error: "Vui lòng nhập tên file!" });
+    return;
+  }
+
+  // Tìm CV có nameFile và idFile khớp với newNameCv và idFile
+  const checkCvName = user.cv.find(
+    (cv: ICv) => cv.nameFile === newNameCv && cv.idFile === idFile
+  );
+
+  // Nếu tìm thấy CV, trả về thông báo thành công
+  if (checkCvName) {
+    res.status(200).json({ code: 201, success: "Cập nhật CV thành công" });
+    return;
+  }
+
+  // Nếu không tìm thấy CV, chuyển đến middleware tiếp theo
+
+  next();
 };

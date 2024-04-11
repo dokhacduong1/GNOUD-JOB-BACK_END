@@ -12,8 +12,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.verifyCodeSms = exports.verifyPassword = exports.sendEms = exports.changeEmailSuggestions = exports.changeJobSuggestions = exports.changeInfoUser = exports.changePassword = exports.allowSettingUser = exports.authen = exports.resetPassword = exports.checkToken = exports.forgotPassword = exports.login = exports.register = void 0;
-const user_model_1 = __importDefault(require("../../../../models/user.model"));
+exports.verifyCodeSms = exports.verifyPassword = exports.sendEms = exports.changeEmailSuggestions = exports.changeJobSuggestions = exports.changeInfoCompany = exports.changeInfoUser = exports.changePassword = exports.allowSettingUser = exports.authen = exports.resetPassword = exports.checkToken = exports.forgotPassword = exports.login = exports.register = void 0;
 const md5_1 = __importDefault(require("md5"));
 const employers_model_1 = __importDefault(require("../../../../models/employers.model"));
 const forgot_password_employer_model_1 = __importDefault(require("../../../../models/forgot-password-employer.model"));
@@ -38,6 +37,12 @@ function validatePhoneNumberInternational(phone) {
 function validateEmail(email) {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     return emailRegex.test(email);
+}
+function convertPhone(phone) {
+    if (phone.startsWith("0")) {
+        return phone.substring(1);
+    }
+    return phone;
 }
 const checkActivePhone = (activePhone, res) => {
     if (activePhone) {
@@ -271,18 +276,6 @@ const changePassword = function (req, res, next) {
             const newPassword = req.body.newPassword;
             const reEnterPassword = req.body.reEnterPassword;
             const email = req["user"].email;
-            const user = yield user_model_1.default.findOne({
-                email: email,
-                password: (0, md5_1.default)(password),
-            });
-            if (!user) {
-                res.status(401).json({ code: 401, error: "Sai mật khẩu hiện tại!" });
-                return;
-            }
-            if (user.status !== "active") {
-                res.status(401).json({ code: 401, error: "Tài khoản đã bị khóa!" });
-                return;
-            }
             if (newPassword !== reEnterPassword) {
                 res.status(401).json({ code: 401, error: "Mật khẩu mới không khớp!" });
                 return;
@@ -292,6 +285,18 @@ const changePassword = function (req, res, next) {
                     code: 401,
                     error: "Mật khẩu mới không được trùng mật khẩu cũ!",
                 });
+                return;
+            }
+            const user = yield employers_model_1.default.findOne({
+                email: email,
+                password: (0, md5_1.default)(password),
+            });
+            if (!user) {
+                res.status(401).json({ code: 401, error: "Sai mật khẩu hiện tại!" });
+                return;
+            }
+            if (user.status !== "active") {
+                res.status(401).json({ code: 401, error: "Tài khoản đã bị khóa!" });
                 return;
             }
             if (!validatePassword(newPassword)) {
@@ -339,6 +344,70 @@ const changeInfoUser = function (req, res, next) {
     });
 };
 exports.changeInfoUser = changeInfoUser;
+const changeInfoCompany = function (req, res, next) {
+    return __awaiter(this, void 0, void 0, function* () {
+        try {
+            if (!req.body.taxCodeCompany) {
+                res.status(401).json({ code: 401, error: "Vui lòng nhập mã số thuế" });
+                return;
+            }
+            if (!req.body.addressCompany) {
+                res
+                    .status(401)
+                    .json({
+                    code: 401,
+                    error: "Vui lòng chọn Tỉnh/thành phố, Quận/huyện, Phường/xã",
+                });
+                return;
+            }
+            if (!req.body.specificAddressCompany) {
+                res
+                    .status(401)
+                    .json({ code: 401, error: "Vui lòng chọn địa chỉ chi tiết" });
+                return;
+            }
+            if (!req.body.numberOfWorkers) {
+                res
+                    .status(401)
+                    .json({ code: 401, error: "Vui lòng chọn quy mô công ty" });
+                return;
+            }
+            if (!req.body.emailCompany) {
+                res.status(401).json({ code: 401, error: "Vui lòng nhập email công ty" });
+                return;
+            }
+            if (req.body["activityFieldList"].length < 1) {
+                res
+                    .status(401)
+                    .json({
+                    code: 401,
+                    error: "Vui lòng chọn ít nhất một lĩnh vực hoạt động",
+                });
+                return;
+            }
+            if (!req.body["phoneCompany"]) {
+                res
+                    .status(401)
+                    .json({ code: 401, error: "Vui lòng nhập số điện thoại công ty" });
+                return;
+            }
+            if (req.body.phoneCompany) {
+                if (!validatePhoneNumber(req.body.phoneCompany)) {
+                    res
+                        .status(401)
+                        .json({ code: 401, error: "Số điện thoại không hợp lệ" });
+                    return;
+                }
+            }
+            next();
+        }
+        catch (error) {
+            console.error("Error in API:", error);
+            res.status(500).json({ error: "Internal Server Error" });
+        }
+    });
+};
+exports.changeInfoCompany = changeInfoCompany;
 const changeJobSuggestions = function (req, res, next) {
     return __awaiter(this, void 0, void 0, function* () {
         try {
@@ -459,23 +528,22 @@ exports.changeEmailSuggestions = changeEmailSuggestions;
 const sendEms = function (req, res, next) {
     return __awaiter(this, void 0, void 0, function* () {
         try {
-            const activePhone = req["user"]["activePhone"];
-            const email = req["user"]["email"];
-            let phone = req.body.phone;
+            const { activePhone, email, phoneNumber } = req["user"];
+            let { phone } = req.body;
             if (checkActivePhone(activePhone, res)) {
                 res
                     .status(401)
                     .json({ code: 401, error: "Số điện thoại đã được xác nhận!" });
                 return;
             }
-            const checkExistingPhoneOk = yield checkExistingPhone(phone, req["user"]["phoneNumber"], res);
+            const checkExistingPhoneOk = yield checkExistingPhone(phone, phoneNumber, res);
             if (checkExistingPhoneOk) {
                 res
                     .status(401)
                     .json({ code: 401, error: "Số điện thoại đã được đăng ký!" });
                 return;
             }
-            let checkRateLimitOk = yield checkRateLimit(email, res);
+            const checkRateLimitOk = yield checkRateLimit(email, res);
             if (checkRateLimitOk["status"]) {
                 res.status(401).json({
                     code: 401,
@@ -489,11 +557,12 @@ const sendEms = function (req, res, next) {
                     .json({ code: 401, error: "Vui lòng nhập số điện thoại!" });
                 return;
             }
-            req.body.phone = "+84" + req.body.phone;
-            if (!validatePhoneNumberInternational(req.body.phone)) {
+            phone = "+84" + convertPhone(phone);
+            if (!validatePhoneNumberInternational(phone)) {
                 res.status(401).json({ code: 401, error: "Số điện thoại không hợp lệ!" });
                 return;
             }
+            req.body.phone = phone;
             next();
         }
         catch (error) {

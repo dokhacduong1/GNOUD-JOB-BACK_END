@@ -32,7 +32,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.uplloadTiny = exports.uplloadReact = void 0;
+exports.uplloadReactPdf = exports.uplloadTiny = exports.uplloadReact = void 0;
 const uploadToDriver = __importStar(require("../../../../helpers/uploadToDriver"));
 const uplloadReact = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
     if (req.body["thumbUrl"]) {
@@ -61,3 +61,17 @@ const uplloadTiny = (req, res, next) => __awaiter(void 0, void 0, void 0, functi
     next();
 });
 exports.uplloadTiny = uplloadTiny;
+const uplloadReactPdf = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
+    if (req.body["file"]) {
+        try {
+            const buffer = req.body["file"];
+            const link = yield uploadToDriver.uploadSingleFile(buffer);
+            req.body["file"] = link;
+        }
+        catch (error) {
+            console.error("ok");
+        }
+    }
+    next();
+});
+exports.uplloadReactPdf = uplloadReactPdf;

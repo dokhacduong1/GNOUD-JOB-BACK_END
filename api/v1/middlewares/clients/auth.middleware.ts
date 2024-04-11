@@ -18,6 +18,7 @@ export const auth =async function (req: Request, res: Response,next : any): Prom
         }
         //Nếu có lưu user vừa tìm được vào req.user
         req["user"] = user
+     
         //Xong cho next
         next();
     } else {

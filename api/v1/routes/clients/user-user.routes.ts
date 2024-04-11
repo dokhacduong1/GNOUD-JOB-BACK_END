@@ -16,6 +16,7 @@ router.post('/detail',authMiddlewares.auth,controller.detail)
 router.post('/list',authMiddlewares.auth,controller.list)
 router.post('/change-password',authMiddlewares.auth,validates.changePassword,controller.changePassword)
 router.post('/change-info-user',authMiddlewares.auth,validates.changeInfoUser,controller.changeInfoUser)
+router.post('/recruitment-job',authMiddlewares.auth,validates.recruitmentJob,uploadDriver.uplloadReactPdf,controller.recruitmentJob)
 
 router.post('/change-job-suggestions',authMiddlewares.auth,validates.changeJobSuggestions,controller.changeJobSuggestions)
 router.post('/change-email-suggestions',authMiddlewares.auth,validates.changeEmailSuggestions,controller.changeEmailSuggestions)
@@ -23,4 +24,7 @@ router.post('/change-email-suggestions',authMiddlewares.auth,validates.changeEma
 router.post('/authen',validates.authen,controller.authen)
 router.post('/allow-setting-user',authMiddlewares.auth,validates.allowSettingUser,controller.allowSettingUser)
 router.post('/upload-avatar',authMiddlewares.auth,uploadDriver.uplloadReact,controller.uploadAvatar)
+router.post('/upload-cv',authMiddlewares.auth,validates.uploadCv,uploadDriver.uplloadReactPdf,controller.uploadCv)
+router.get('/get-cv-user',authMiddlewares.auth,controller.getCvByUser)
+router.post('/edit-cv-user',authMiddlewares.auth,validates.editCvByUser,controller.editCvByUser)
 export const usersRoutes : Router  = router

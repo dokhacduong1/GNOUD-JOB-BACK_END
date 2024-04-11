@@ -1,8 +1,8 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.filterQueryStatusJobs = exports.filterQueryStatusJobsCategories = exports.filterQueryStatus = void 0;
+exports.filterQueryStatusCvJobsEmployer = exports.filterQueryStatusJobsEmployer = exports.filterQueryStatusJobs = exports.filterQueryStatusJobsCategories = exports.filterQueryStatus = void 0;
 const filterQueryStatus = (query) => {
-    let filterQueryStatus = ["active", "inactive"];
+    let filterQueryStatus = ["active", "inactive", "pending", "refuse"];
     const checkQuery = filterQueryStatus.includes(query);
     return checkQuery;
 };
@@ -19,3 +19,15 @@ const filterQueryStatusJobs = (query) => {
     return checkQuery;
 };
 exports.filterQueryStatusJobs = filterQueryStatusJobs;
+const filterQueryStatusJobsEmployer = (query) => {
+    let filterQueryStatus = ["active", "inactive"];
+    const checkQuery = filterQueryStatus.includes(query);
+    return checkQuery;
+};
+exports.filterQueryStatusJobsEmployer = filterQueryStatusJobsEmployer;
+const filterQueryStatusCvJobsEmployer = (query) => {
+    let filterQueryStatus = ["pending", "refuse", "accept"];
+    const checkQuery = filterQueryStatus.includes(query);
+    return checkQuery;
+};
+exports.filterQueryStatusCvJobsEmployer = filterQueryStatusCvJobsEmployer;

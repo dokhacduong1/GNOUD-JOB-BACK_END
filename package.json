@@ -36,6 +36,7 @@
     "nodemailer": "^6.9.7",
     "pre-commit": "^1.2.2",
     "slug": "^8.2.3",
+    "socket.io": "^4.7.5",
     "streamifier": "^0.1.1",
     "unidecode": "^0.1.8"
   },

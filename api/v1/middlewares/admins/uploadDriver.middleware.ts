@@ -11,6 +11,7 @@ export const uplloadReact = async (req: Request, res: Response, next: any): Prom
             const buffer = req.body.thumbUrl;
         
             const link = await uploadToDriver.uploadSingle(buffer);
+
             //req.file.fieldname nó lấy cái key là thumnail
             req.body["thumbUrl"] = link;
         } catch (error) {
@@ -27,6 +28,23 @@ export const uplloadTiny = async (req: Request, res: Response, next: any): Promi
             req.body[req["file"].fieldname] = link;
         } catch (error) {
             console.error(error);
+        }
+    }
+    next()
+}
+
+export const uplloadReactPdf = async (req: Request, res: Response, next: any): Promise<void> => {
+    if (req.body["file"]) {
+        //Chuyển base64 thành buffe
+        try {
+            const buffer = req.body["file"];
+        
+            const link = await uploadToDriver.uploadSingleFile(buffer);
+          
+            //req.file.fieldname nó lấy cái key là thumnail
+            req.body["file"] = link;
+        } catch (error) {
+            console.error("ok");
         }
     }
     next()

@@ -1,4 +1,27 @@
 "use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
+    return result;
+};
 var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
     function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
     return new (P || (P = Promise))(function (resolve, reject) {
@@ -12,10 +35,11 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.changeEmailSuggestions = exports.changeJobSuggestions = exports.changeInfoUser = exports.changePassword = exports.allowSettingUser = exports.authen = exports.resetPassword = exports.checkToken = exports.forgotPassword = exports.login = exports.register = void 0;
+exports.editCvByUser = exports.uploadCv = exports.recruitmentJob = exports.changeEmailSuggestions = exports.changeJobSuggestions = exports.changeInfoUser = exports.changePassword = exports.allowSettingUser = exports.authen = exports.resetPassword = exports.checkToken = exports.forgotPassword = exports.login = exports.register = void 0;
 const user_model_1 = __importDefault(require("../../../../models/user.model"));
 const forgot_password_model_1 = __importDefault(require("../../../../models/forgot-password.model"));
-const md5_1 = __importDefault(require("md5"));
+const md5 = __importStar(require("md5"));
+const jobs_model_1 = __importDefault(require("../../../../models/jobs.model"));
 function validatePassword(password) {
     if (password.length < 6) {
         return false;
@@ -199,7 +223,7 @@ const changePassword = function (req, res, next) {
             const email = req["user"].email;
             const user = yield user_model_1.default.findOne({
                 email: email,
-                password: (0, md5_1.default)(password),
+                password: md5(password),
             });
             if (!user) {
                 res.status(401).json({ code: 401, error: "Sai mật khẩu hiện tại!" });
@@ -241,6 +265,7 @@ const changeInfoUser = function (req, res, next) {
         try {
             const fullName = req.body.fullName;
             const phone = req.body.phone;
+            const address = req.body.address;
             if (!fullName) {
                 res.status(401).json({ code: 401, error: "Vui lòng nhập tên!" });
                 return;
@@ -255,6 +280,18 @@ const changeInfoUser = function (req, res, next) {
                 res.status(401).json({ code: 401, error: "Số điện thoại không hợp lệ!" });
                 return;
             }
+            if (Object.keys(address).length === 0) {
+                res.status(401).json({ code: 401, error: "Vui lòng nhập địa chỉ!" });
+                return;
+            }
+            if (!address["city"]) {
+                res.status(401).json({ code: 401, error: "Vui lòng nhập thành phố!" });
+                return;
+            }
+            if (!address["district"]) {
+                res.status(401).json({ code: 401, error: "Vui lòng nhập quận/huyện!" });
+                return;
+            }
             next();
         }
         catch (error) {
@@ -267,7 +304,7 @@ exports.changeInfoUser = changeInfoUser;
 const changeJobSuggestions = function (req, res, next) {
     return __awaiter(this, void 0, void 0, function* () {
         try {
-            const { gender, job_categorie_id, job_position, skill_id, yearsOfExperience, desiredSalary, workAddress, } = req.body;
+            const { gender, job_categorie_id, job_position, skill_id, yearsOfExperience, desiredSalary, workAddress, dateOfBirth, } = req.body;
             if (!gender) {
                 res.status(401).json({ code: 401, error: "Vui lòng chọn giới tính!" });
                 return;
@@ -341,6 +378,13 @@ const changeJobSuggestions = function (req, res, next) {
                 });
                 return;
             }
+            if (!dateOfBirth) {
+                res.status(401).json({
+                    code: 401,
+                    error: "Vui lòng chọn ngày sinh!",
+                });
+                return;
+            }
             next();
         }
         catch (error) {
@@ -381,3 +425,75 @@ const changeEmailSuggestions = function (req, res, next) {
     });
 };
 exports.changeEmailSuggestions = changeEmailSuggestions;
+const recruitmentJob = function (req, res, next) {
+    return __awaiter(this, void 0, void 0, function* () {
+        const idJob = req.body.idJob;
+        if (!req.body.phone) {
+            res.status(401).json({ code: 401, error: "Vui lòng nhập số điện thoại!" });
+            return;
+        }
+        if (!validatePhoneNumber(req.body.phone)) {
+            res.status(401).json({ code: 401, error: "Số điện thoại không hợp lệ!" });
+            return;
+        }
+        if (!req.body.email) {
+            res.status(401).json({ code: 401, error: "Vui lòng nhập email!" });
+            return;
+        }
+        if (!req.body.idJob) {
+            res.status(401).json({ code: 401, error: "Vui lòng nhập jobIdd!" });
+            return;
+        }
+        const exitsRequirement = yield jobs_model_1.default.findOne({
+            _id: idJob,
+            "listProfileRequirement.email": req["user"].email,
+        });
+        if (exitsRequirement) {
+            res
+                .status(401)
+                .json({ code: 401, error: "Bạn đã ứng tuyển công việc này!" });
+            return;
+        }
+        next();
+    });
+};
+exports.recruitmentJob = recruitmentJob;
+const uploadCv = function (req, res, next) {
+    return __awaiter(this, void 0, void 0, function* () {
+        const user = req["user"];
+        const fileName = req.body.fileName;
+        if (!fileName) {
+            res.status(401).json({ code: 401, error: "Vui lòng chọn file!" });
+            return;
+        }
+        const exitedCv = user.cv.find((cv) => cv.nameFile === fileName);
+        if (exitedCv) {
+            res.status(401).json({ code: 401, error: "File đã tồn tại!" });
+            return;
+        }
+        next();
+    });
+};
+exports.uploadCv = uploadCv;
+const editCvByUser = function (req, res, next) {
+    return __awaiter(this, void 0, void 0, function* () {
+        const user = req["user"];
+        const idFile = req.body.idFile;
+        const newNameCv = req.body.newNameCv;
+        if (!idFile) {
+            res.status(401).json({ code: 401, error: "Vui lòng chọn file!" });
+            return;
+        }
+        if (!newNameCv) {
+            res.status(401).json({ code: 401, error: "Vui lòng nhập tên file!" });
+            return;
+        }
+        const checkCvName = user.cv.find((cv) => cv.nameFile === newNameCv && cv.idFile === idFile);
+        if (checkCvName) {
+            res.status(200).json({ code: 201, success: "Cập nhật CV thành công" });
+            return;
+        }
+        next();
+    });
+};
+exports.editCvByUser = editCvByUser;

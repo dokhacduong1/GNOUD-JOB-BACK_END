@@ -12,13 +12,14 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.changeEmailSuggestions = exports.changeJobSuggestions = exports.changeInfoUser = exports.changePassword = exports.authen = exports.list = exports.detail = exports.resetPassword = exports.checkToken = exports.forgotPassword = exports.login = exports.register = exports.uploadAvatar = exports.allowSettingUser = void 0;
+exports.editCvByUser = exports.getCvByUser = exports.uploadCv = exports.recruitmentJob = exports.changeEmailSuggestions = exports.changeJobSuggestions = exports.changeInfoUser = exports.changePassword = exports.authen = exports.list = exports.detail = exports.resetPassword = exports.checkToken = exports.forgotPassword = exports.login = exports.register = exports.uploadAvatar = exports.allowSettingUser = void 0;
 const generateString_1 = require("../../../../helpers/generateString");
 const md5_1 = __importDefault(require("md5"));
 const user_model_1 = __importDefault(require("../../../../models/user.model"));
 const forgot_password_model_1 = __importDefault(require("../../../../models/forgot-password.model"));
 const sendMail_1 = require("../../../../helpers/sendMail");
 const jobs_model_1 = __importDefault(require("../../../../models/jobs.model"));
+const cvs_model_1 = __importDefault(require("../../../../models/cvs.model"));
 const allowSettingUser = function (req, res) {
     return __awaiter(this, void 0, void 0, function* () {
         try {
@@ -299,6 +300,9 @@ const authen = function (req, res) {
                 desiredSalary: userClient.desiredSalary || "",
                 workAddress: userClient.workAddress || "",
                 emailSuggestions: userClient.emailSuggestions || [],
+                address: userClient.address || "",
+                dateOfBirth: userClient.dateOfBirth || "",
+                description: userClient.description || "",
             };
             res.status(200).json({
                 success: "Xác Thự Thành Công!",
@@ -352,12 +356,17 @@ const changeInfoUser = function (req, res) {
         try {
             const fullName = req.body.fullName;
             const phone = req.body.phone;
+            const address = req.body.address;
             const email = req["user"].email;
+            const description = req.body.description ||
+                "Kết nối với hàng nghìn cơ hội việc làm và ứng viên tài năng trên GNOUD - một nền tảng đổi mới dành cho người tìm kiếm công việc và nhà tuyển dụng. Với GNOUD, bạn sẽ khám phá ra một thế giới mới của cơ hội nghề nghiệp và kết nối với cộng đồng chuyên nghiệp. Hãy bắt đầu hành trình của bạn ngay hôm nay và tạo ra một hồ sơ độc đáo để nổi bật giữa đám đông.";
             yield user_model_1.default.updateOne({
                 email: email,
             }, {
                 fullName: fullName,
                 phone: phone,
+                address: address,
+                description: description,
             });
             res
                 .status(200)
@@ -374,7 +383,7 @@ const changeJobSuggestions = function (req, res) {
     return __awaiter(this, void 0, void 0, function* () {
         try {
             const email = req["user"].email;
-            const { gender, job_categorie_id, job_position, skill_id, yearsOfExperience, desiredSalary, workAddress, } = req.body;
+            const { gender, job_categorie_id, job_position, skill_id, yearsOfExperience, desiredSalary, workAddress, dateOfBirth, } = req.body;
             yield user_model_1.default.updateOne({
                 email: email,
             }, {
@@ -385,6 +394,7 @@ const changeJobSuggestions = function (req, res) {
                 yearsOfExperience,
                 desiredSalary,
                 workAddress,
+                dateOfBirth,
             });
             res
                 .status(200)
@@ -403,7 +413,9 @@ const changeEmailSuggestions = function (req, res) {
             const { emailCheck } = req.body;
             const email = req["user"].email;
             yield user_model_1.default.updateOne({ email: email }, { emailSuggestions: emailCheck });
-            res.status(200).json({ code: 200, success: `Cập nhật thông báo qua email thành công!` });
+            res
+                .status(200)
+                .json({ code: 200, success: `Cập nhật thông báo qua email thành công!` });
         }
         catch (error) {
             console.error("Error in API:", error);
@@ -412,3 +424,100 @@ const changeEmailSuggestions = function (req, res) {
     });
 };
 exports.changeEmailSuggestions = changeEmailSuggestions;
+const recruitmentJob = function (req, res) {
+    return __awaiter(this, void 0, void 0, function* () {
+        try {
+            const idJob = req.body.idJob;
+            const recordNew = {
+                email: req["user"].email,
+                fullName: req["user"].fullName,
+                phone: req.body.phone,
+                id_file_cv: req.body.file,
+                ["introducing_letter"]: req.body["introducing_letter"],
+                dateTime: new Date(),
+                idUser: req["user"]._id,
+                status: "pending",
+                countView: 0,
+            };
+            const record = new cvs_model_1.default(recordNew);
+            yield record.save();
+            const idCv = record._id;
+            yield jobs_model_1.default.updateOne({
+                _id: idJob,
+            }, {
+                $push: { listProfileRequirement: idCv },
+            });
+            res.status(200).json({
+                code: 201,
+                success: `Bạn đã ứng tuyển thành công vui lòng đợi nhà tuyển dụng phản hồi!`,
+            });
+        }
+        catch (error) {
+            console.error("Error in API:", error);
+            res.status(500).json({ error: "Internal Server Error" });
+        }
+    });
+};
+exports.recruitmentJob = recruitmentJob;
+const uploadCv = function (req, res) {
+    return __awaiter(this, void 0, void 0, function* () {
+        try {
+            const user = req["user"];
+            const idFile = req.body.file;
+            let nameFile = req.body.fileName;
+            if (nameFile.includes(".pdf")) {
+                nameFile = nameFile.replace(".pdf", "");
+            }
+            const objectNew = {
+                idFile: idFile,
+                nameFile: nameFile,
+            };
+            yield user_model_1.default.updateOne({
+                _id: user._id,
+            }, {
+                $push: { cv: objectNew }
+            });
+            res.status(200).json({ code: 200, success: "Upload CV thành công!" });
+        }
+        catch (error) {
+            console.error("Error in API:", error);
+            res.status(500).json({ error: "Internal Server Error" });
+        }
+    });
+};
+exports.uploadCv = uploadCv;
+const getCvByUser = function (req, res) {
+    return __awaiter(this, void 0, void 0, function* () {
+        try {
+            const user = req["user"];
+            const listCV = user.cv;
+            res.status(200).json({ code: 200, data: listCV });
+        }
+        catch (error) {
+            console.error("Error in API:", error);
+            res.status(500).json({ error: "Internal Server Error" });
+        }
+    });
+};
+exports.getCvByUser = getCvByUser;
+const editCvByUser = function (req, res) {
+    return __awaiter(this, void 0, void 0, function* () {
+        try {
+            const user = req["user"];
+            const idFile = req.body.idFile;
+            const newNameCv = req.body.newNameCv;
+            yield user_model_1.default.updateOne({
+                _id: user._id,
+                "cv.idFile": idFile
+            }, {
+                $set: { "cv.$.nameFile": newNameCv }
+            });
+            res.status(200).json({ code: 200, success: "Cập nhật CV thành công" });
+        }
+        catch (error) {
+            console.error("Error in API:", error);
+            res.status(500).json({ error: "Internal Server Error" });
+        }
+    });
+};
+exports.editCvByUser = editCvByUser;

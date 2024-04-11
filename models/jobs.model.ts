@@ -30,33 +30,46 @@ const jobSchema = new mongoose.Schema(
     receiveEmail: String,
     featured: Boolean,
     end_date: Date,
-    deletedAt:Date,
+    deletedAt: Date,
     city: {
       slug: String,
       code: Number,
       name: String,
     },
-    listUserId: {
-      type: Array,
-      default: [],
+    countOpenCv:{
+      type: Number,
+      default: 0
     },
-
     start_date: {
       type: Date,
       default: Date.now,
     },
     listProfileRequirement: {
       type: Array,
+      default: [
+        {
+          email: String,
+          phone: String,
+          id_file_cv: String,
+          introducing_letter: String,
+          status: String,
+          dateTime: Date,
+          idUser: String,
+          countView: Number,
+        },
+      ],
+    },
+    listProfileViewJob: {
+      type: Array,
       default: [],
     },
-
     address: {
       location: String,
       linkMap: Array,
     },
     status: {
       type: String,
-      default: "active",
+      default: "pending",
     },
     deleted: {
       type: Boolean,

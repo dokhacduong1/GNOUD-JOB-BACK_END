@@ -5,7 +5,16 @@ const userSchema = new mongoose.Schema(
     email: String,
     password: String,
     dateOfBirth: Date,
-    address: String,
+    address: {
+      city: String,
+      district: String,
+    },
+    description: {
+      type: String,
+      default:
+        "Kết nối với hàng nghìn cơ hội việc làm và ứng viên tài năng trên GNOUD - một nền tảng đổi mới dành cho người tìm kiếm công việc và nhà tuyển dụng. Với GNOUD, bạn sẽ khám phá ra một thế giới mới của cơ hội nghề nghiệp và kết nối với cộng đồng chuyên nghiệp. Hãy bắt đầu hành trình của bạn ngay hôm nay và tạo ra một hồ sơ độc đáo để nổi bật giữa đám đông.",
+    },
+
     workAddress: Array,
     phone: String,
     educationalLevel: String,
@@ -15,17 +24,24 @@ const userSchema = new mongoose.Schema(
     companyName: String,
     desiredSalary: String,
     jobTitle: String,
-    avatar:{
+    avatar: {
       type: String,
-      default: "https://lh3.googleusercontent.com/d/1ILtAxkD9TrKMtGQkxX9eThmrMjCp49W0"
+      default:
+        "https://lh3.googleusercontent.com/d/1ILtAxkD9TrKMtGQkxX9eThmrMjCp49W0",
     },
+    cv:[
+      {
+        idFile: String,
+        nameFile: String,
+      }
+    ],
     skill_id: Array,
     job_categorie_id: String,
     job_position: Array,
     gender: Number,
     image: String,
     token: String,
-    emailSuggestions:Array,
+    emailSuggestions: Array,
     activeJobSearch: {
       type: Boolean,
       default: false,
@@ -34,7 +50,7 @@ const userSchema = new mongoose.Schema(
       type: Boolean,
       default: true,
     },
-    
+
     status: {
       type: String,
       default: "active",

@@ -9,6 +9,7 @@ import { InfoUser } from "../../interfaces/user.interface";
 import ForgotPassword from "../../../../models/forgot-password.model";
 import { sendMail } from "../../../../helpers/sendMail";
 import Job from "../../../../models/jobs.model";
+import Cv from "../../../../models/cvs.model";
 
 // [POST] /api/v1/clients/users/allow-setting-user
 export const allowSettingUser = async function (
@@ -335,10 +336,10 @@ export const authen = async function (
       const checkTag = await Job.find({
         listTagSlug: { $in: userClient.job_position },
       }).select("listTagName listTagSlug");
-     
+
       const userJobPositionsSet = new Set(userClient.job_position); // Tạo một Set từ mảng job_position để tối ưu hóa việc kiểm tra tồn tại
       // Duyệt qua mảng checkTag để kiểm tra từng tag có tồn tại trong Set không
-      
+
       checkTag.forEach((item) => {
         item.listTagName.forEach((tag, index) => {
           //Lấy tagSlug từ mảng listTagSlug tương ứng với tag
@@ -352,11 +353,10 @@ export const authen = async function (
         });
       });
       // Duyệt qua các phần tử còn lại trong Set để kiểm tra xem có phần tử nào không tồn tại trong database không
-      userJobPositionsSet.forEach(function(value) {
+      userJobPositionsSet.forEach(function (value) {
         //Lấy ra tag từ value xong push vào mảng convertData ở đây ta loại bỏ phần tử cuối cùng là - và thay thế bằng khoảng trắng
         const tag = value.replace(/-/g, " ");
         convertData.push({ label: tag, value: value });
-      
       });
     }
 
@@ -377,6 +377,9 @@ export const authen = async function (
       desiredSalary: userClient.desiredSalary || "",
       workAddress: userClient.workAddress || "",
       emailSuggestions: userClient.emailSuggestions || [],
+      address: userClient.address || "",
+      dateOfBirth: userClient.dateOfBirth || "",
+      description: userClient.description || "",
     };
 
     res.status(200).json({
@@ -439,9 +442,13 @@ export const changeInfoUser = async function (
   res: Response
 ): Promise<void> {
   try {
-    const fullName = req.body.fullName;
-    const phone = req.body.phone;
-    const email = req["user"].email;
+    const fullName: string = req.body.fullName;
+    const phone: string = req.body.phone;
+    const address: string = req.body.address;
+    const email: string = req["user"].email;
+    const description: string =
+      req.body.description ||
+      "Kết nối với hàng nghìn cơ hội việc làm và ứng viên tài năng trên GNOUD - một nền tảng đổi mới dành cho người tìm kiếm công việc và nhà tuyển dụng. Với GNOUD, bạn sẽ khám phá ra một thế giới mới của cơ hội nghề nghiệp và kết nối với cộng đồng chuyên nghiệp. Hãy bắt đầu hành trình của bạn ngay hôm nay và tạo ra một hồ sơ độc đáo để nổi bật giữa đám đông.";
     await User.updateOne(
       {
         email: email,
@@ -449,6 +456,8 @@ export const changeInfoUser = async function (
       {
         fullName: fullName,
         phone: phone,
+        address: address,
+        description: description,
       }
     );
 
@@ -475,6 +484,7 @@ export const changeJobSuggestions = async function (
       yearsOfExperience,
       desiredSalary,
       workAddress,
+      dateOfBirth,
     } = req.body;
 
     await User.updateOne(
@@ -489,6 +499,7 @@ export const changeJobSuggestions = async function (
         yearsOfExperience,
         desiredSalary,
         workAddress,
+        dateOfBirth,
       }
     );
     res
@@ -506,12 +517,148 @@ export const changeEmailSuggestions = async function (
   res: Response
 ): Promise<void> {
   try {
-      const {emailCheck} = req.body;
-      const email = req["user"].email;
-      await User.updateOne({email: email}, {emailSuggestions: emailCheck})
-      res.status(200).json({ code: 200, success: `Cập nhật thông báo qua email thành công!` });
+    const { emailCheck } = req.body;
+    const email = req["user"].email;
+    await User.updateOne({ email: email }, { emailSuggestions: emailCheck });
+    res
+      .status(200)
+      .json({ code: 200, success: `Cập nhật thông báo qua email thành công!` });
   } catch (error) {
     console.error("Error in API:", error);
     res.status(500).json({ error: "Internal Server Error" });
+  }
+};
+
+// [POST] /api/v1/clients/users/recruitment-job
+export const recruitmentJob = async function (
+  req: Request,
+  res: Response
+): Promise<void> {
+  try {
+    //Lấy ra id công việc muốn xin vào
+    const idJob: String = req.body.idJob;
+    //Tạo ra một comment lưu dữ liệu cần thiết
+    const recordNew = {
+      email: req["user"].email,
+      fullName: req["user"].fullName,
+      phone: req.body.phone,
+      id_file_cv: req.body.file,
+      ["introducing_letter"]: req.body["introducing_letter"],
+      dateTime: new Date(),
+      idUser: req["user"]._id,
+      status: "pending",
+      countView: 0,
+    };
+    const record = new Cv(recordNew);
+    await record.save();
+    const idCv = record._id; 
+   
+    //Bắt đầu cập nhật
+    await Job.updateOne(
+      {
+        _id: idJob,
+      },
+      {
+        $push: { listProfileRequirement: idCv },
+      }
+    );
+
+    res.status(200).json({
+      code: 201,
+      success: `Bạn đã ứng tuyển thành công vui lòng đợi nhà tuyển dụng phản hồi!`,
+    });
+  } catch (error) {
+    console.error("Error in API:", error);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+};
+
+// [POST] /api/v1/clients/users/upload-cv
+export const uploadCv = async function (
+  req: Request,
+  res: Response
+): Promise<void> {
+  try {
+    // Lấy thông tin người dùng từ request
+    const user = req["user"];
+   
+    // Lấy idFile và nameFile từ body của request
+    const idFile = req.body.file;
+    let nameFile = req.body.fileName;
+    if(nameFile.includes(".pdf")){
+      nameFile = nameFile.replace(".pdf","");
+    }
+    // Tạo một đối tượng mới với idFile và nameFile
+    const objectNew = {
+      idFile: idFile,
+      nameFile: nameFile,
+    };
+
+    // Cập nhật thông tin CV của người dùng trong cơ sở dữ liệu
+    await User.updateOne(
+      {
+        _id: user._id,
+      },
+      {
+        $push: { cv: objectNew}
+      }
+    );
+
+    // Trả về thông báo thành công
+    res.status(200).json({ code: 200, success: "Upload CV thành công!" });
+  } catch (error) {
+    // Ghi lỗi vào console nếu có lỗi xảy ra
+    console.error("Error in API:", error);
+
+    // Trả về lỗi 500 nếu có lỗi xảy ra
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+};
+
+// [GET] /api/v1/clients/users/get-cv-user
+export const getCvByUser = async function (
+  req: Request,
+  res: Response
+): Promise<void> {
+  try {
+    const user = req["user"];
+
+    const listCV = user.cv;
+    res.status(200).json({ code: 200, data: listCV });
+  } catch (error) {
+      // Ghi lỗi vào console nếu có lỗi xảy ra
+      console.error("Error in API:", error);
+
+      // Trả về lỗi 500 nếu có lỗi xảy ra
+      res.status(500).json({ error: "Internal Server Error" });
+  }
+}
+// [GET] /api/v1/clients/users/edit-cv-user
+export const editCvByUser = async function (
+  req: Request,
+  res: Response
+): Promise<void> {
+  try {
+    const user = req["user"];
+    const idFile = req.body.idFile;
+    const newNameCv = req.body.newNameCv;
+    
+    await User.updateOne(
+      {
+        _id: user._id,
+        "cv.idFile": idFile
+      },
+      {
+        $set: { "cv.$.nameFile": newNameCv }
+      }
+    )
+  
+    res.status(200).json({ code: 200, success: "Cập nhật CV thành công" });
+  } catch (error) {
+      // Ghi lỗi vào console nếu có lỗi xảy ra
+      console.error("Error in API:", error);
+
+      // Trả về lỗi 500 nếu có lỗi xảy ra
+      res.status(500).json({ error: "Internal Server Error" });
   }
 }

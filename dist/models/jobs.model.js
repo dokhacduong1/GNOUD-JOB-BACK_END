@@ -38,15 +38,30 @@ const jobSchema = new mongoose_1.default.Schema({
         code: Number,
         name: String,
     },
-    listUserId: {
-        type: Array,
-        default: [],
+    countOpenCv: {
+        type: Number,
+        default: 0
     },
     start_date: {
         type: Date,
         default: Date.now,
     },
     listProfileRequirement: {
+        type: Array,
+        default: [
+            {
+                email: String,
+                phone: String,
+                id_file_cv: String,
+                introducing_letter: String,
+                status: String,
+                dateTime: Date,
+                idUser: String,
+                countView: Number,
+            },
+        ],
+    },
+    listProfileViewJob: {
         type: Array,
         default: [],
     },
@@ -56,7 +71,7 @@ const jobSchema = new mongoose_1.default.Schema({
     },
     status: {
         type: String,
-        default: "active",
+        default: "pending",
     },
     deleted: {
         type: Boolean,

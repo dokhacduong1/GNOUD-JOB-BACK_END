@@ -5,6 +5,8 @@ import md5 from "md5";
 import Employer from "../../../../models/employers.model";
 import ForgotPasswordEmployer from "../../../../models/forgot-password-employer.model";
 import ActivePhoneEmployer from "../../../../models/active-phone-employer";
+import axios, { Axios } from "axios";
+import qs from "qs";
 //Cả đoạn này hàm hỗ trợ
 //Hàm này kiểm tra Password
 function validatePassword(password: string): boolean {
@@ -45,7 +47,13 @@ function validateEmail(email: string): boolean {
   // Kiểm tra xem địa chỉ email đáp ứng biểu thức chính quy hay không
   return emailRegex.test(email);
 }
-
+//Hàm này kiểm tra số điện thoại nếu có số 0 ở đầu thì cắt đi
+function convertPhone(phone: string): string {
+  if (phone.startsWith("0")) {
+    return phone.substring(1);
+  }
+  return phone;
+}
 const checkActivePhone = (activePhone: boolean, res: Response) => {
   if (activePhone) {
     return true;
@@ -347,10 +355,22 @@ export const changePassword = async function (
     const newPassword = req.body.newPassword;
     //Lấy ra mật khẩu nhập lại
     const reEnterPassword = req.body.reEnterPassword;
+    //Kiểm tra xem có nhập đúng mật khẩu mới không xem khớp không
     //Lấy ra email
     const email = req["user"].email;
+    if (newPassword !== reEnterPassword) {
+      res.status(401).json({ code: 401, error: "Mật khẩu mới không khớp!" });
+      return;
+    }
+    if (newPassword === password) {
+      res.status(401).json({
+        code: 401,
+        error: "Mật khẩu mới không được trùng mật khẩu cũ!",
+      });
+      return;
+    }
     //Lấy ra user từ database
-    const user = await User.findOne({
+    const user = await Employer.findOne({
       email: email,
       password: md5(password),
     });
@@ -364,18 +384,7 @@ export const changePassword = async function (
       res.status(401).json({ code: 401, error: "Tài khoản đã bị khóa!" });
       return;
     }
-    //Kiểm tra xem có nhập đúng mật khẩu mới không xem khớp không
-    if (newPassword !== reEnterPassword) {
-      res.status(401).json({ code: 401, error: "Mật khẩu mới không khớp!" });
-      return;
-    }
-    if (newPassword === password) {
-      res.status(401).json({
-        code: 401,
-        error: "Mật khẩu mới không được trùng mật khẩu cũ!",
-      });
-      return;
-    }
+
     //Kiểm tra xem password có đúng định dạng không
     if (!validatePassword(newPassword)) {
       res.status(401).json({
@@ -422,7 +431,74 @@ export const changeInfoUser = async function (
     res.status(500).json({ error: "Internal Server Error" });
   }
 };
+export const changeInfoCompany = async function (
+  req: Request,
+  res: Response,
+  next: any
+): Promise<void> {
+  try {
+    if (!req.body.taxCodeCompany) {
+      res.status(401).json({ code: 401, error: "Vui lòng nhập mã số thuế" });
+      return;
+    }
+  
+    if (!req.body.addressCompany) {
+      res
+        .status(401)
+        .json({
+          code: 401,
+          error: "Vui lòng chọn Tỉnh/thành phố, Quận/huyện, Phường/xã",
+        });
+      return;
+    }
+    if (!req.body.specificAddressCompany) {
+      res
+        .status(401)
+        .json({ code: 401, error: "Vui lòng chọn địa chỉ chi tiết" });
+      return;
+    }
+    if (!req.body.numberOfWorkers) {
+      res
+        .status(401)
+        .json({ code: 401, error: "Vui lòng chọn quy mô công ty" });
+      return;
+    }
 
+    if (!req.body.emailCompany) {
+      res.status(401).json({ code: 401, error: "Vui lòng nhập email công ty" });
+      return;
+    }
+    if (req.body["activityFieldList"].length < 1) {
+      res
+        .status(401)
+        .json({
+          code: 401,
+          error: "Vui lòng chọn ít nhất một lĩnh vực hoạt động",
+        });
+      return;
+    }
+    if (!req.body["phoneCompany"]) {
+      res
+        .status(401)
+        .json({ code: 401, error: "Vui lòng nhập số điện thoại công ty" });
+      return;
+    }
+    if (req.body.phoneCompany) {
+      if (!validatePhoneNumber(req.body.phoneCompany)) {
+        res
+          .status(401)
+          .json({ code: 401, error: "Số điện thoại không hợp lệ" });
+        return;
+      }
+    }
+
+    next();
+  } catch (error) {
+    //Thông báo lỗi 500 đến người dùng server lỗi.
+    console.error("Error in API:", error);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+};
 export const changeJobSuggestions = async function (
   req: Request,
   res: Response,
@@ -563,10 +639,8 @@ export const sendEms = async function (
   next: any
 ): Promise<void> {
   try {
-    const activePhone = req["user"]["activePhone"];
-    const email = req["user"]["email"];
-
-    let phone = req.body.phone;
+    const { activePhone, email, phoneNumber } = req["user"];
+    let { phone } = req.body;
 
     if (checkActivePhone(activePhone, res)) {
       res
@@ -575,10 +649,9 @@ export const sendEms = async function (
       return;
     }
 
-    //Kiểm tra xem số điện thoại đã được đăng ký chưa
     const checkExistingPhoneOk = await checkExistingPhone(
       phone,
-      req["user"]["phoneNumber"],
+      phoneNumber,
       res
     );
     if (checkExistingPhoneOk) {
@@ -588,8 +661,7 @@ export const sendEms = async function (
       return;
     }
 
-    //Kiểm tra xem số điện thoại đã được gửi quá nhanh chưa
-    let checkRateLimitOk = await checkRateLimit(email, res);
+    const checkRateLimitOk = await checkRateLimit(email, res);
     if (checkRateLimitOk["status"]) {
       res.status(401).json({
         code: 401,
@@ -607,12 +679,14 @@ export const sendEms = async function (
       return;
     }
 
-    req.body.phone = "+84" + req.body.phone;
-    if (!validatePhoneNumberInternational(req.body.phone)) {
+    phone = "+84" + convertPhone(phone);
+
+    if (!validatePhoneNumberInternational(phone)) {
       res.status(401).json({ code: 401, error: "Số điện thoại không hợp lệ!" });
       return;
     }
 
+    req.body.phone = phone;
     next();
   } catch (error) {
     console.error("Error in API:", error);
@@ -645,6 +719,7 @@ export const verifyCodeSms = async function (
 ): Promise<void> {
   try {
     const code = req.body.code;
+
     const activePhone = req["user"]["activePhone"];
     if (activePhone) {
       res
@@ -652,26 +727,31 @@ export const verifyCodeSms = async function (
         .json({ code: 401, error: "Số điện thoại đã được xác nhận!" });
       return;
     }
+
     if (!code) {
       res.status(401).json({ code: 401, error: "Vui lòng nhập mã xác nhận!" });
       return;
     }
+
     if (code.length !== 6) {
       res
         .status(401)
         .json({ code: 401, error: "Mã xác nhận phải có 6 ký tự!" });
       return;
     }
+
     if (!req.body.phone) {
       res
         .status(401)
         .json({ code: 401, error: "Vui lòng nhập số điện thoại!" });
       return;
     }
+
     if (!validatePhoneNumber(req.body.phone)) {
       res.status(401).json({ code: 401, error: "Số điện thoại không hợp lệ!" });
       return;
     }
+
     next();
   } catch (error) {
     //Thông báo lỗi 500 đến người dùng server lỗi.

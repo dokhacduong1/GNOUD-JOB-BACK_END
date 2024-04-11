@@ -85,7 +85,7 @@ const coutJobs = function (req, res) {
                 deleted: false,
                 status: "active",
             };
-            const records = yield employers_model_1.default.find(find).select("companyName image").sort({ companyName: 1 });
+            const records = yield employers_model_1.default.find(find).select("companyName image logoCompany").sort({ companyName: 1 });
             const convertDataPromises = records.map((record) => __awaiter(this, void 0, void 0, function* () {
                 const countJob = yield jobs_model_1.default.countDocuments({ employerId: record._id });
                 return Object.assign(Object.assign({}, record.toObject()), { ["countJobs"]: countJob });
