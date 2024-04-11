@@ -425,6 +425,7 @@ const changeEmailSuggestions = function (req, res) {
 };
 exports.changeEmailSuggestions = changeEmailSuggestions;
 const recruitmentJob = function (req, res) {
+    var _a;
     return __awaiter(this, void 0, void 0, function* () {
         try {
             const idJob = req.body.idJob;
@@ -438,6 +439,8 @@ const recruitmentJob = function (req, res) {
                 idUser: req["user"]._id,
                 status: "pending",
                 countView: 0,
+                idJob: idJob,
+                employerId: (_a = req === null || req === void 0 ? void 0 : req.body) === null || _a === void 0 ? void 0 : _a.employerId,
             };
             const record = new cvs_model_1.default(recordNew);
             yield record.save();

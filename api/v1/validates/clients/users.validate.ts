@@ -3,6 +3,7 @@ import User from "../../../../models/user.model";
 import ForgotPassword from "../../../../models/forgot-password.model";
 import * as md5 from "md5";
 import Job from "../../../../models/jobs.model";
+import Cv from "../../../../models/cvs.model";
 
 //Hàm này kiểm tra Password
 function validatePassword(password: string): boolean {
@@ -496,13 +497,17 @@ export const recruitmentJob = async function (
     return;
   }
   if (!req.body.idJob) {
-    res.status(401).json({ code: 401, error: "Vui lòng nhập jobIdd!" });
+    res.status(401).json({ code: 401, error: "Vui lòng nhập id công việc!" });
+    return;
+  }
+  if(!req.body.employerId){
+    res.status(401).json({ code: 401, error: "Vui lòng nhập id nhà tuyển dụng!" });
     return;
   }
   //Check xem đã ứng tuyển chưa
-  const exitsRequirement = await Job.findOne({
-    _id: idJob,
-    "listProfileRequirement.email": req["user"].email,
+  const exitsRequirement = await Cv.findOne({
+    idJob: idJob,
+    email: req["user"].email,
   });
   if (exitsRequirement) {
     res

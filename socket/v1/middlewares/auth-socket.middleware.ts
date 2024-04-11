@@ -26,6 +26,7 @@ const findUserOrEmployer = async (token: string, role: string) => {
 export const authSocket = async (io: any) => {
   // server-side
   io.use(async (socket : Socket, next : any) => {
+   
     // Lấy token và role từ handshake
     const token: string = socket?.handshake?.auth?.token;
     const role: string = socket?.handshake?.auth?.role;

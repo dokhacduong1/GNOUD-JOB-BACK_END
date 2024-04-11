@@ -25,6 +25,8 @@ const user_model_1 = __importDefault(require("../../../../models/user.model"));
 const getFileToDriver_1 = require("../../../../helpers/getFileToDriver");
 const sendMail_1 = require("../../../../helpers/sendMail");
 const skills_model_1 = __importDefault(require("../../../../models/skills.model"));
+const cvs_model_1 = __importDefault(require("../../../../models/cvs.model"));
+const rooms_chat_model_1 = __importDefault(require("../../../../models/rooms-chat.model"));
 const index = function (req, res) {
     return __awaiter(this, void 0, void 0, function* () {
         try {
@@ -356,9 +358,16 @@ const infoJob = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
                 model: jobCategories_model_1.default,
             },
             {
-                path: "listProfileRequirement.idUser",
-                select: "avatar",
-                model: user_model_1.default,
+                path: "listProfileRequirement",
+                select: "",
+                model: cvs_model_1.default,
+                populate: [
+                    {
+                        path: "idUser",
+                        select: "avatar fullName",
+                        model: user_model_1.default,
+                    },
+                ],
             },
         ];
         let query = {
@@ -402,34 +411,65 @@ const getPdfToDriver = function (req, res) {
 };
 exports.getPdfToDriver = getPdfToDriver;
 const actionCv = function (req, res) {
+    var _a, _b;
     return __awaiter(this, void 0, void 0, function* () {
         try {
             const { email, idJob, status, } = req.body;
-            const populateCheck = [
+            const populateOptions = [
                 {
                     path: "employerId",
                     select: "companyName",
                     model: employers_model_1.default,
                 },
+                {
+                    path: "listProfileRequirement",
+                    select: "",
+                    model: cvs_model_1.default,
+                    populate: [
+                        {
+                            path: "idUser",
+                            select: "fullName",
+                            model: user_model_1.default,
+                        },
+                    ],
+                },
             ];
-            const subject = "Thông Báo Tuyển Dụng";
+            const emailSubject = "Thông Báo Tuyển Dụng";
+            const jobRecord = yield jobs_model_1.default.findOne({ _id: idJob }).populate(populateOptions);
+            if (!jobRecord) {
+                res.status(404).json({ error: "Không Tìm Thấy Dữ Liệu!", code: 404 });
+                return;
+            }
+            const profile = jobRecord.listProfileRequirement.find((item) => item.email === email);
+            jobRecord["profileName"] = (_a = profile === null || profile === void 0 ? void 0 : profile.idUser) === null || _a === void 0 ? void 0 : _a.fullName;
             if (status === "refuse") {
-                const record = yield jobs_model_1.default.findOneAndUpdate({ _id: idJob }, { $pull: { listProfileRequirement: { email: email } } }, { new: true }).populate(populateCheck);
-                yield (0, sendMail_1.sendMailEmployerRefureCv)(email, subject, record);
+                yield cvs_model_1.default.deleteOne({ email: email });
+                yield (0, sendMail_1.sendMailEmployerRefureCv)(email, emailSubject, jobRecord);
             }
             else if (status === "accept") {
-                const record = yield jobs_model_1.default.findOneAndUpdate({ _id: idJob, "listProfileRequirement.email": email }, { $set: { "listProfileRequirement.$.status": status } }, { new: true }).populate(populateCheck);
-                yield (0, sendMail_1.sendMailEmployerAcceptCv)(email, subject, record);
-                if (!record) {
-                    res.status(404).json({ error: "Không Tìm Thấy Dữ Liệu!", code: 404 });
-                    return;
-                }
+                yield cvs_model_1.default.updateOne({ email: email, idJob: idJob }, { status: "accept" });
+                yield (0, sendMail_1.sendMailEmployerAcceptCv)(email, emailSubject, jobRecord);
+                const chatRoomData = {
+                    typeRoom: "friend",
+                    users: [
+                        {
+                            user_id: (_b = profile === null || profile === void 0 ? void 0 : profile.idUser) === null || _b === void 0 ? void 0 : _b._id,
+                            role: "super-admin",
+                        },
+                        {
+                            user_id: profile === null || profile === void 0 ? void 0 : profile.employerId,
+                            role: "super-admin",
+                        },
+                    ],
+                };
+                const chatRoom = new rooms_chat_model_1.default(chatRoomData);
+                yield chatRoom.save();
             }
             res.status(200).json({ code: 200, success: "Cập nhật dữ liệu thành công" });
         }
         catch (error) {
-            console.error("Error in API:", error);
-            res.status(500).json({ error: "Internal Server Error" });
+            console.error("Lỗi trong API:", error);
+            res.status(500).json({ error: "Lỗi Máy Chủ Nội Bộ" });
         }
     });
 };
@@ -438,7 +478,12 @@ const coutViewCv = function (req, res) {
     return __awaiter(this, void 0, void 0, function* () {
         try {
             const { email, idJob } = req.body;
-            const record = yield jobs_model_1.default.findOneAndUpdate({ _id: idJob, "listProfileRequirement.email": email }, { $inc: { "listProfileRequirement.$.countView": 1 } });
+            const record = yield cvs_model_1.default.findOneAndUpdate({
+                email: email,
+                idJob: idJob,
+            }, {
+                $inc: { countView: 1 },
+            });
             if (!record) {
                 res.status(404).json({ error: "Không Tìm Thấy Dữ Liệu!", code: 404 });
                 return;
@@ -615,14 +660,20 @@ const followUserJob = function (req, res) {
                     ],
                 },
             ];
-            const job = yield jobs_model_1.default.findOne({ employerId: userId, _id: idJob, "listProfileViewJob.follow": true })
+            const job = yield jobs_model_1.default.findOne({
+                employerId: userId,
+                _id: idJob,
+                "listProfileViewJob.follow": true,
+            })
                 .populate(populateCheck)
                 .select("listProfileViewJob");
             if (!job || !job.listProfileViewJob) {
                 res.status(404).json({ error: "Không Tìm Thấy Dữ Liệu!", code: 404 });
                 return;
             }
-            const dataConvert = job.listProfileViewJob.filter(itemFilter => itemFilter.follow === true).map((item) => {
+            const dataConvert = job.listProfileViewJob
+                .filter((itemFilter) => itemFilter.follow === true)
+                .map((item) => {
                 if (!item.buy) {
                     item["idUser"].email = "";
                     item["idUser"].phone = "";
@@ -651,7 +702,9 @@ const deleteFollowProfile = function (req, res) {
             }, {
                 $set: { "listProfileViewJob.$.follow": false },
             });
-            res.status(200).json({ code: 200, success: "Bạn đã hủy theo dõi người dùng" });
+            res
+                .status(200)
+                .json({ code: 200, success: "Bạn đã hủy theo dõi người dùng" });
         }
         catch (error) {
             console.error("Error in API:", error);

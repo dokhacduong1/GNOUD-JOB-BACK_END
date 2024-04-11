@@ -39,7 +39,7 @@ exports.editCvByUser = exports.uploadCv = exports.recruitmentJob = exports.chang
 const user_model_1 = __importDefault(require("../../../../models/user.model"));
 const forgot_password_model_1 = __importDefault(require("../../../../models/forgot-password.model"));
 const md5 = __importStar(require("md5"));
-const jobs_model_1 = __importDefault(require("../../../../models/jobs.model"));
+const cvs_model_1 = __importDefault(require("../../../../models/cvs.model"));
 function validatePassword(password) {
     if (password.length < 6) {
         return false;
@@ -441,12 +441,16 @@ const recruitmentJob = function (req, res, next) {
             return;
         }
         if (!req.body.idJob) {
-            res.status(401).json({ code: 401, error: "Vui lòng nhập jobIdd!" });
+            res.status(401).json({ code: 401, error: "Vui lòng nhập id công việc!" });
             return;
         }
-        const exitsRequirement = yield jobs_model_1.default.findOne({
-            _id: idJob,
-            "listProfileRequirement.email": req["user"].email,
+        if (!req.body.employerId) {
+            res.status(401).json({ code: 401, error: "Vui lòng nhập id nhà tuyển dụng!" });
+            return;
+        }
+        const exitsRequirement = yield cvs_model_1.default.findOne({
+            idJob: idJob,
+            email: req["user"].email,
         });
         if (exitsRequirement) {
             res

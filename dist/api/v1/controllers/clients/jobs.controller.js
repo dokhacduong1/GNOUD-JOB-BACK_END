@@ -88,8 +88,8 @@ const index = function (req, res) {
                     find["salaryMax"] = { $lt: parseInt(req.query.salaryValue.toString()) };
                 }
             }
-            if (req.query.jobLevel) {
-                find["level"] = req.query.jobLevel.toString();
+            if (req.query.workExperience) {
+                find["workExperience"] = req.query.workExperience.toString();
             }
             const countRecord = yield jobs_model_1.default.countDocuments(find);
             const objectPagination = (0, filterQueryPagination_1.filterQueryPagination)(countRecord, queryPage, queryLimit);

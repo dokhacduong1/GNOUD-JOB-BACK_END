@@ -449,7 +449,7 @@ export const sendMailEmployerAcceptCv = (
               "
               class="box-content"
             >
-              <h3>Chào bạn <span style="color: #ff3f8c">Đỗ Khắc Dương</span></h3>
+              <h3>Chào bạn <span style="color: #ff3f8c">${record["findName"]}</span></h3>
               <p>
                 Xin chúc mừng bạn vì đã trở thành ứng viên thành công cho vị trí
                 <strong style="color: #ff3f8c">${record?.title}</strong> tại
@@ -605,7 +605,7 @@ export const sendMailEmployerRefureCv = (
               "
               class="box-content"
             >
-              <h3>Chào bạn <span style="color: #ff3f8c">Đỗ Khắc Dương</span></h3>
+              <h3>Chào bạn <span style="color: #ff3f8c">${record["findName"]}</span></h3>
               <p>
                 GNOUD chân thành cám ơn bạn đã ứng tuyển vào vị trí
                 <strong style="color: #ff3f8c">${record?.title}</strong> của

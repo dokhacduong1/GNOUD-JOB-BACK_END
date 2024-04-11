@@ -23,11 +23,10 @@ var __importStar = (this && this.__importStar) || function (mod) {
     return result;
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.chatSocketRouter = void 0;
-const controller = __importStar(require("../../controllers/chat-socket.controller"));
-const chatSocketRouter = (socket, io) => {
-    const roomChat = socket.handshake.auth.roomChat || "";
-    socket.join(roomChat);
-    socket.on("CLIENT_SEND_MESSAGE", controller.chatSocket(socket, io));
-};
-exports.chatSocketRouter = chatSocketRouter;
+exports.cvRoutes = void 0;
+const express_1 = require("express");
+const controller = __importStar(require("../../controllers/employers/cv.controller"));
+const router = (0, express_1.Router)();
+router.get("/get-cv-apply", controller.getCvApply);
+router.get("/get-cv-apply-accept", controller.getCvApplyAccept);
+exports.cvRoutes = router;

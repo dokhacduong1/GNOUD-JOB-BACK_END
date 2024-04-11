@@ -18,6 +18,8 @@ import {
   sendMailEmployerRefureCv,
 } from "../../../../helpers/sendMail";
 import Skill from "../../../../models/skills.model";
+import Cv from "../../../../models/cvs.model";
+import RoomChat from "../../../../models/rooms-chat.model";
 
 // [GET] /api/v1/employers/jobs/index/
 export const index = async function (
@@ -458,10 +460,22 @@ export const infoJob = async (req: Request, res: Response): Promise<void> => {
         model: JobCategories,
       },
       {
-        path: "listProfileRequirement.idUser",
-        select: "avatar",
-        model: User,
+        path: "listProfileRequirement",
+        select: "",
+        model: Cv,
+        populate: [
+          {
+            path: "idUser",
+            select: "avatar fullName",
+            model: User,
+          },
+        ],
       },
+      // {
+      //   path: "listProfileRequirement.idUser",
+      //   select: "avatar",
+      //   model: User,
+      // },
     ];
 
     let query: any = {
@@ -521,44 +535,90 @@ export const actionCv = async function (
   res: Response
 ): Promise<void> {
   try {
+    // Trích xuất email, idJob, và status từ request body
     const {
       email,
       idJob,
       status,
     }: { email: string; idJob: string; status: string } = req.body;
-    const populateCheck: POPULATE[] = [
+
+    // Định nghĩa các tùy chọn populate cho Job model
+    const populateOptions: POPULATE[] = [
       {
         path: "employerId",
         select: "companyName",
         model: Employer,
       },
+      {
+        path: "listProfileRequirement",
+        select: "",
+        model: Cv,
+        populate: [
+          {
+            path: "idUser",
+            select: "fullName",
+            model: User,
+          },
+        ],
+      },
     ];
-    const subject = "Thông Báo Tuyển Dụng";
-    if (status === "refuse") {
-      const record = await Job.findOneAndUpdate(
-        { _id: idJob },
-        { $pull: { listProfileRequirement: { email: email } } },
-        { new: true }
-      ).populate(populateCheck);
-      await sendMailEmployerRefureCv(email, subject, record);
-    } else if (status === "accept") {
-      const record = await Job.findOneAndUpdate(
-        { _id: idJob, "listProfileRequirement.email": email },
-        { $set: { "listProfileRequirement.$.status": status } },
-        { new: true }
-      ).populate(populateCheck);
 
-      await sendMailEmployerAcceptCv(email, subject, record);
-      if (!record) {
-        res.status(404).json({ error: "Không Tìm Thấy Dữ Liệu!", code: 404 });
-        return;
-      }
+    // Định nghĩa chủ đề cho email
+    const emailSubject = "Thông Báo Tuyển Dụng";
+
+    // Tìm công việc với id đã cho và populate các trường cần thiết
+    const jobRecord = await Job.findOne({ _id: idJob }).populate(populateOptions);
+
+    // Nếu không tìm thấy jobRecord, trả về lỗi 404
+    if (!jobRecord) {
+      res.status(404).json({ error: "Không Tìm Thấy Dữ Liệu!", code: 404 });
+      return;
     }
 
+    // Tìm hồ sơ với email đã cho trong listProfileRequirement của công việc
+    const profile = jobRecord.listProfileRequirement.find(
+      (item) => item.email === email
+    );
+
+    // Thêm fullName của hồ sơ vào jobRecord
+    jobRecord["profileName"] = profile?.idUser?.fullName;
+
+    // Nếu status là "refuse", xóa CV và gửi email từ chối
+    if (status === "refuse") {
+      await Cv.deleteOne({ email: email });
+      await sendMailEmployerRefureCv(email, emailSubject, jobRecord);
+    } 
+    // Nếu status là "accept", cập nhật status của CV, gửi email chấp nhận, và tạo một phòng chat mới
+    else if (status === "accept") {
+      await Cv.updateOne({ email: email, idJob: idJob }, { status: "accept" });
+      await sendMailEmployerAcceptCv(email, emailSubject, jobRecord);
+
+      // Định nghĩa dữ liệu cho phòng chat mới
+      const chatRoomData = {
+        typeRoom: "friend",
+        users: [
+          {
+            user_id: profile?.idUser?._id,
+            role: "super-admin",
+          },
+          {
+            user_id: profile?.employerId,
+            role: "super-admin",
+          },
+        ],
+      };
+
+      // Tạo và lưu phòng chat mới
+      const chatRoom = new RoomChat(chatRoomData);
+      await chatRoom.save();
+    }
+
+    // Gửi phản hồi thành công
     res.status(200).json({ code: 200, success: "Cập nhật dữ liệu thành công" });
   } catch (error) {
-    console.error("Error in API:", error);
-    res.status(500).json({ error: "Internal Server Error" });
+    // Ghi lỗi và gửi phản hồi lỗi
+    console.error("Lỗi trong API:", error);
+    res.status(500).json({ error: "Lỗi Máy Chủ Nội Bộ" });
   }
 };
 
@@ -570,9 +630,18 @@ export const coutViewCv = async function (
   try {
     const { email, idJob }: { email: string; idJob: string } = req.body;
 
-    const record = await Job.findOneAndUpdate(
-      { _id: idJob, "listProfileRequirement.email": email },
-      { $inc: { "listProfileRequirement.$.countView": 1 } }
+    // const record = await Job.findOneAndUpdate(
+    //   { _id: idJob, "listProfileRequirement.email": email },
+    //   { $inc: { "listProfileRequirement.$.countView": 1 } }
+    // );
+    const record = await Cv.findOneAndUpdate(
+      {
+        email: email,
+        idJob: idJob,
+      },
+      {
+        $inc: { countView: 1 },
+      }
     );
 
     if (!record) {
@@ -715,7 +784,7 @@ export const infoUserProfile = async function (
 ): Promise<void> {
   try {
     // Lấy thông tin người dùng và id người dùng từ request
-    const userId  : string = req["user"]?._id;
+    const userId: string = req["user"]?._id;
     const idUser: string = req.body.idUser;
     const idJob: string = req.body.idJob;
     interface IJob {
@@ -742,7 +811,7 @@ export const infoUserProfile = async function (
     ];
 
     // Tìm công việc mà người dùng đã mở liên hệ
-    const findJob : IJob | null = await Job.findOne({
+    const findJob: IJob | null = await Job.findOne({
       _id: idJob,
       employerId: userId,
       listProfileViewJob: { $elemMatch: { idUser: idUser, buy: true } },
@@ -759,7 +828,7 @@ export const infoUserProfile = async function (
       .populate(populateCheck);
 
     // Đếm số lượng thông tin đã được xác thực
-    const count : number = [
+    const count: number = [
       Object.keys(result?.skill_id).length > 0,
       result?.desiredSalary,
       result?.address?.city,
@@ -768,7 +837,7 @@ export const infoUserProfile = async function (
     ].filter(Boolean).length;
 
     // Tạo một đối tượng mới với thông tin người dùng và mức độ xác thực
-    const objectNew :  { [key: string]: any } = {
+    const objectNew: { [key: string]: any } = {
       ...result.toObject(),
       authentication_level: count,
     };
@@ -811,7 +880,6 @@ export const followUserProfile = async function (
   }
 };
 
-
 // [Post] /api/v1/employers/jobs/follow-user-job
 // Hàm để xem thông tin người dùng mà nhà tuyển dụng đã theo dõi
 export const followUserJob = async function (
@@ -819,9 +887,8 @@ export const followUserJob = async function (
   res: Response
 ): Promise<void> {
   try {
-    
     // Lấy thông tin người dùng và id công việc từ request
-    const userId : string = req["user"]._id;
+    const userId: string = req["user"]._id;
     const idJob: string = req.body.idJob;
 
     // Định nghĩa cấu trúc populate để lấy thông tin người dùng và danh mục công việc
@@ -841,7 +908,11 @@ export const followUserJob = async function (
     ];
 
     // Tìm công việc theo id người dùng và id công việc, sau đó populate thông tin người dùng và danh mục công việc
-    const job = await Job.findOne({ employerId: userId, _id: idJob, "listProfileViewJob.follow": true })
+    const job = await Job.findOne({
+      employerId: userId,
+      _id: idJob,
+      "listProfileViewJob.follow": true,
+    })
       .populate(populateCheck)
       .select("listProfileViewJob");
 
@@ -851,18 +922,20 @@ export const followUserJob = async function (
       res.status(404).json({ error: "Không Tìm Thấy Dữ Liệu!", code: 404 });
       return;
     }
-     // Chuyển đổi dữ liệu để chỉ trả về thông tin cần thiết
-     const dataConvert = job.listProfileViewJob.filter(itemFilter=>itemFilter.follow === true).map((item: any) => {
-      //Nếu chưa mua thì không hiển thị email và phone
-      if (!item.buy) {
-        item["idUser"].email = "";
-        item["idUser"].phone = "";
-      }
-      return {
-        ...item.idUser.toObject(),
-        dataTime: item.dataTime,
-      };
-    });
+    // Chuyển đổi dữ liệu để chỉ trả về thông tin cần thiết
+    const dataConvert = job.listProfileViewJob
+      .filter((itemFilter) => itemFilter.follow === true)
+      .map((item: any) => {
+        //Nếu chưa mua thì không hiển thị email và phone
+        if (!item.buy) {
+          item["idUser"].email = "";
+          item["idUser"].phone = "";
+        }
+        return {
+          ...item.idUser.toObject(),
+          dataTime: item.dataTime,
+        };
+      });
 
     // Trả về dữ liệu đã được chuyển đổi
     res.status(200).json({ data: dataConvert, code: 200 });
@@ -874,8 +947,6 @@ export const followUserJob = async function (
   }
 };
 
-
-
 // [Post] /api/v1/employers/jobs/delete-follow-profile
 export const deleteFollowProfile = async function (
   req: Request,
@@ -884,7 +955,7 @@ export const deleteFollowProfile = async function (
   try {
     const idProfile: string = req.body.idProfile;
     const idJob: string = req.body.idJob;
-    const userId : string = req["user"]._id;
+    const userId: string = req["user"]._id;
 
     await Job.updateOne(
       {
@@ -897,7 +968,9 @@ export const deleteFollowProfile = async function (
       }
     );
 
-    res.status(200).json({ code: 200, success: "Bạn đã hủy theo dõi người dùng" });
+    res
+      .status(200)
+      .json({ code: 200, success: "Bạn đã hủy theo dõi người dùng" });
   } catch (error) {
     console.error("Error in API:", error);
     res.status(500).json({ error: "Internal Server Error" });

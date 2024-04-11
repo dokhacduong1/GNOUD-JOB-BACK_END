@@ -548,6 +548,8 @@ export const recruitmentJob = async function (
       idUser: req["user"]._id,
       status: "pending",
       countView: 0,
+      idJob: idJob,
+      employerId: req?.body?.employerId,
     };
     const record = new Cv(recordNew);
     await record.save();

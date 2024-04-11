@@ -11,13 +11,14 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.chatSocket = void 0;
 const chatSocket = (socket, io) => {
+    const roomChat = socket.handshake.auth.roomChat || "";
     return (msg) => __awaiter(void 0, void 0, void 0, function* () {
         const objectSend = {
             fullName: socket["user"].fullName,
             content: msg,
             user_id: socket["user"]._id,
         };
-        io.emit("SERVER_RETURN_MESSAGE", objectSend);
+        io.to(roomChat).emit("SERVER_RETURN_MESSAGE", objectSend);
     });
 };
 exports.chatSocket = chatSocket;

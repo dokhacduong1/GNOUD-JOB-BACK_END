@@ -116,8 +116,8 @@ export const index = async function (
     }
 
     //Check xem nếu query gửi lên level của công ty muốn tuyển (Chức năng tìm kiếm kinh nghiệm làm việc của job đó)
-    if (req.query.jobLevel) {
-      find["level"] = req.query.jobLevel.toString();
+    if (req.query.workExperience) {
+      find["workExperience"] = req.query.workExperience.toString();
     }
 
     //Đếm xem bảng record có bao nhiêu sản phẩm và check phân trang (Chức Năng Phân Trang)
@@ -370,7 +370,7 @@ export const advancedSearch = async function (
     if (req.query.select) {
       select = req.query.select.toString();
     }
-
+    
     //Tạo một mảng POPULATE có định dạng mặc định như dưới
     const populateCheck: POPULATE[] = [
       {
@@ -386,13 +386,13 @@ export const advancedSearch = async function (
     ];
     //Đếm xem bảng record có bao nhiêu sản phẩm và check phân trang (Chức Năng Phân Trang)
     const countRecord = await Job.countDocuments(find);
-
+   
     const objectPagination = filterQueryPagination(
       countRecord,
       queryPage,
       queryLimit
     );
-
+  
     //Check xem có bao job để phân trang
     const countJobs: number = Math.round(countRecord / queryLimit);
 
@@ -408,6 +408,8 @@ export const advancedSearch = async function (
       companyImage: record["employerId"]["image"],
       logoCompany: record["employerId"]["logoCompany"],
     }));
+   
+   
     const dataEncrypted = encryptedData(convertData);
     res
       .status(200)

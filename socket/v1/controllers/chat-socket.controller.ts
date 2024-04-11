@@ -2,7 +2,8 @@ import { Socket } from "socket.io";
 
 
 export const chatSocket = (socket: Socket, io: any) => {
-  
+  const roomChat = socket.handshake.auth.roomChat || "";
+
   return async (msg: string) => {
 
     
@@ -18,7 +19,7 @@ export const chatSocket = (socket: Socket, io: any) => {
     };
 
     // Gửi tin nhắn về cho tất cả client
-    io.emit("SERVER_RETURN_MESSAGE", objectSend);
+    io.to(roomChat).emit("SERVER_RETURN_MESSAGE", objectSend);
   };
 };
 
