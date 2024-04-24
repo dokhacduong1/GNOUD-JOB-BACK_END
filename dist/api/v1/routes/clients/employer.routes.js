@@ -29,4 +29,5 @@ const controller = __importStar(require("../../controllers/clients/employers.con
 const router = (0, express_1.Router)();
 router.get("/", controller.index);
 router.get("/count-job", controller.coutJobs);
+router.get("/get-company/:slug", controller.getCompany);
 exports.employerRoutes = router;

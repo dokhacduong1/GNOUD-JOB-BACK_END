@@ -567,7 +567,9 @@ export const actionCv = async function (
     const emailSubject = "Thông Báo Tuyển Dụng";
 
     // Tìm công việc với id đã cho và populate các trường cần thiết
-    const jobRecord = await Job.findOne({ _id: idJob }).populate(populateOptions);
+    const jobRecord = await Job.findOne({ _id: idJob }).populate(
+      populateOptions
+    );
 
     // Nếu không tìm thấy jobRecord, trả về lỗi 404
     if (!jobRecord) {
@@ -581,36 +583,89 @@ export const actionCv = async function (
     );
 
     // Thêm fullName của hồ sơ vào jobRecord
-    jobRecord["profileName"] = profile?.idUser?.fullName;
+    jobRecord["profileName"] = profile?.idUser["fullName"];
 
     // Nếu status là "refuse", xóa CV và gửi email từ chối
     if (status === "refuse") {
-      await Cv.deleteOne({ email: email });
+      // Cập nhật status của CV thành "refuse"
+      const checkCv = await Cv.findOneAndUpdate({
+        email: email ,
+        idJob: idJob,
+      },{
+        status: "refuse"
+      });
+      // Nếu CV tồn tại trong listProfileRequirement của công việc, xóa nó
+      if(checkCv){
+        await Job.updateOne({
+          "listProfileRequirement":checkCv._id
+        },{
+          $pull: { listProfileRequirement: checkCv._id }
+        })
+      }
       await sendMailEmployerRefureCv(email, emailSubject, jobRecord);
-    } 
+    }
     // Nếu status là "accept", cập nhật status của CV, gửi email chấp nhận, và tạo một phòng chat mới
     else if (status === "accept") {
       await Cv.updateOne({ email: email, idJob: idJob }, { status: "accept" });
+      await Job.updateOne({
+
+      })
       await sendMailEmployerAcceptCv(email, emailSubject, jobRecord);
 
-      // Định nghĩa dữ liệu cho phòng chat mới
-      const chatRoomData = {
+      // Tìm phòng chat bạn bè và kiểm tra xem người dùng đã tham gia chưa
+      const exitedRoomChatFriend = await RoomChat.findOne({
+        "users.user_id": profile?.idUser["_id"],
+        "users.employer_id": profile["employerId"],
         typeRoom: "friend",
-        users: [
+      });
+      if (!exitedRoomChatFriend) {
+        // Định nghĩa dữ liệu cho phòng chat mới
+        const chatRoomData = {
+          typeRoom: "friend",
+          users: [
+            {
+              user_id: profile?.idUser["_id"],
+              id_check: profile?.idUser["_id"],
+              role: "super-admin",
+            },
+            {
+              employer_id: profile["employerId"],
+              id_check: profile["employerId"],
+              role: "super-admin",
+            },
+          ],
+        };
+        // Tạo và lưu phòng chat mới
+        const chatRoom = new RoomChat(chatRoomData);
+        await chatRoom.save();
+      }
+      // Tìm phòng chat group và kiểm tra xem người dùng đã tham gia chưa
+      const roomChatGroupExit = await RoomChat.findOne({
+        "users.employer_id": profile["employerId"],
+        typeRoom: "group",
+        "users.user_id": profile?.idUser["_id"],
+      });
+      
+      // Nếu chưa tham gia, thêm người dùng vào phòng chat group
+      if (!roomChatGroupExit) {
+   
+        // Tìm phòng chat group và thêm người dùng vào nếu chưa có
+        await RoomChat.findOneAndUpdate(
           {
-            user_id: profile?.idUser?._id,
-            role: "super-admin",
+            "users.employer_id": profile["employerId"],
+            typeRoom: "group",
           },
           {
-            user_id: profile?.employerId,
-            role: "super-admin",
-          },
-        ],
-      };
-
-      // Tạo và lưu phòng chat mới
-      const chatRoom = new RoomChat(chatRoomData);
-      await chatRoom.save();
+            $push: {
+              users: {
+                user_id: profile?.idUser["_id"],
+                id_check: profile?.idUser["_id"],
+                role: "user",
+              },
+            },
+          }
+        );
+      }
     }
 
     // Gửi phản hồi thành công

@@ -30,6 +30,7 @@ const user_user_routes_1 = require("./user-user.routes");
 const skill_routes_1 = require("./skill.routes");
 const authMiddlewares = __importStar(require("../../middlewares/clients/auth.middleware"));
 const chat_routes_1 = require("./chat.routes");
+const cv_routes_1 = require("./cv.routes");
 const routesClientVersion1 = (app) => {
     const version = "/api/v1/client";
     app.use(version + "/employers", employer_routes_1.employerRoutes);
@@ -38,5 +39,6 @@ const routesClientVersion1 = (app) => {
     app.use(version + "/job-categories", jobCategories_routes_1.jobCategoriesRoutes);
     app.use(version + "/skill", skill_routes_1.skillRoutes);
     app.use(version + "/chat", authMiddlewares.auth, chat_routes_1.chatRoutes);
+    app.use(version + "/cvs", authMiddlewares.auth, cv_routes_1.cvRoutes);
 };
 exports.default = routesClientVersion1;

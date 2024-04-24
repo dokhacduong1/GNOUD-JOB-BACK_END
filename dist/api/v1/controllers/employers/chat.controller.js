@@ -8,18 +8,127 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.chatPrivate = void 0;
-const chatPrivate = function (req, res) {
+exports.getHistoryChat = exports.getContentChat = void 0;
+const chat_model_1 = __importDefault(require("../../../../models/chat.model"));
+const user_model_1 = __importDefault(require("../../../../models/user.model"));
+const rooms_chat_model_1 = __importDefault(require("../../../../models/rooms-chat.model"));
+const getContentChat = function (req, res) {
     return __awaiter(this, void 0, void 0, function* () {
         try {
-            var io = req.app.get('socketio');
-            res.status(200).json({ message: "Chat private" });
+            const populate = [
+                {
+                    path: "user_id",
+                    select: "email phone fullName avatar",
+                    model: user_model_1.default,
+                },
+                {
+                    path: "room_chat_id",
+                    select: "typeRoom",
+                    model: rooms_chat_model_1.default,
+                },
+            ];
+            const record = yield chat_model_1.default.find({ room_chat_id: req["roomChat"] })
+                .populate(populate)
+                .select("content user_id");
+            let typeRoom = "friend";
+            const convertData = record.map((item) => {
+                if (item.room_chat_id["typeRoom"] === "group") {
+                    typeRoom = "group";
+                }
+                return {
+                    content: item.content,
+                    user_id: item.user_id ? item.user_id["_id"] : req["user"]._id,
+                    avatar: item.user_id ? item.user_id["avatar"] : req["user"].logoCompany,
+                };
+            });
+            res.status(200).json({ data: convertData, typeRoom, code: 200 });
         }
         catch (error) {
-            console.error("Error in API:", error);
-            res.status(500).json({ error: "Internal Server Error" });
+            console.error("Lỗi trong API:", error);
+            res.status(500).json({ error: "Lỗi máy chủ nội bộ" });
         }
     });
 };
-exports.chatPrivate = chatPrivate;
+exports.getContentChat = getContentChat;
+const getHistoryChat = function (req, res) {
+    return __awaiter(this, void 0, void 0, function* () {
+        try {
+            const populateInfo = [
+                {
+                    path: "users.user_id",
+                    select: "email phone fullName avatar",
+                    model: user_model_1.default,
+                },
+            ];
+            const [rooms, chats, unreadCounts] = yield Promise.all([
+                rooms_chat_model_1.default.find({ _id: { $in: req["listIdRoomChat"] } }).populate(populateInfo),
+                chat_model_1.default.aggregate([
+                    { $match: { room_chat_id: { $in: req["listIdRoomChat"] } } },
+                    { $sort: { room_chat_id: 1, createdAt: -1 } },
+                    {
+                        $group: {
+                            _id: "$room_chat_id",
+                            lastMessage: { $first: "$content" },
+                            idUserChat: { $first: "$user_id" },
+                        },
+                    },
+                ]),
+                chat_model_1.default.aggregate([
+                    {
+                        $match: {
+                            room_chat_id: { $in: req["listIdRoomChat"] },
+                            read: false,
+                            user_id: { $ne: req["user"]._id.toString() },
+                        },
+                    },
+                    {
+                        $group: {
+                            _id: "$room_chat_id",
+                            count: { $sum: 1 },
+                        },
+                    },
+                ]),
+            ]);
+            const data = rooms.map((room) => {
+                var _a, _b, _c;
+                const chatAll = chats.find((item) => item._id.toString() === room._id.toString());
+                if (room.typeRoom === "group") {
+                    return {
+                        typeRoom: "group",
+                        room_chat_id: room._id || "",
+                        avatar: room.avatar || "",
+                        fullName: room.title || "",
+                        user_id: room._id,
+                        lastMessage: chats ? (chatAll === null || chatAll === void 0 ? void 0 : chatAll.lastMessage) || "" : "",
+                        idUserChat: chats ? (chatAll === null || chatAll === void 0 ? void 0 : chatAll.idUserChat) || "" : "",
+                        unreadCount: ((_a = unreadCounts[0]) === null || _a === void 0 ? void 0 : _a.count) || 0,
+                    };
+                }
+                const unreadCount = ((_b = unreadCounts.find((item) => item._id.toString() === room._id.toString())) === null || _b === void 0 ? void 0 : _b.count) || 0;
+                const user = (_c = room === null || room === void 0 ? void 0 : room.users[0]) === null || _c === void 0 ? void 0 : _c.user_id;
+                return {
+                    typeRoom: "friend",
+                    room_chat_id: room._id || "",
+                    user_id: user["_id"] || "",
+                    fullName: user["fullName"] || "",
+                    avatar: user["avatar"] || "",
+                    phone: user["phone"] || "",
+                    email: user["email"] || "",
+                    lastMessage: chats ? (chatAll === null || chatAll === void 0 ? void 0 : chatAll.lastMessage) || "" : "",
+                    idUserChat: chats ? (chatAll === null || chatAll === void 0 ? void 0 : chatAll.idUserChat) || "" : "",
+                    unreadCount: unreadCount,
+                };
+            });
+            res.status(200).json({ data: data, code: 200 });
+        }
+        catch (error) {
+            console.error("Lỗi trong API:", error);
+            res.status(500).json({ error: "Lỗi máy chủ nội bộ" });
+        }
+    });
+};
+exports.getHistoryChat = getHistoryChat;

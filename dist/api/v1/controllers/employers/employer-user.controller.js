@@ -12,7 +12,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.changePasswordEmployer = exports.verifyCodeSms = exports.verifyPassword = exports.sendEms = exports.changeInfoCompany = exports.changeInfoEmployer = exports.uploadAvatar = exports.authen = exports.resetPassword = exports.checkToken = exports.forgotPassword = exports.login = exports.register = void 0;
+exports.statisticCompany = exports.changePasswordEmployer = exports.verifyCodeSms = exports.verifyPassword = exports.sendEms = exports.changeInfoCompany = exports.changeInfoEmployer = exports.uploadAvatar = exports.authen = exports.resetPassword = exports.checkToken = exports.forgotPassword = exports.login = exports.register = void 0;
 const employers_model_1 = __importDefault(require("../../../../models/employers.model"));
 const md5_1 = __importDefault(require("md5"));
 const generateString_1 = require("../../../../helpers/generateString");
@@ -22,6 +22,9 @@ const employer_counter_1 = __importDefault(require("../../../../models/employer-
 const active_phone_employer_1 = __importDefault(require("../../../../models/active-phone-employer"));
 const smsPhoneSend_1 = require("../../../../helpers/smsPhoneSend");
 const jobCategories_model_1 = __importDefault(require("../../../../models/jobCategories.model"));
+const rooms_chat_model_1 = __importDefault(require("../../../../models/rooms-chat.model"));
+const jobs_model_1 = __importDefault(require("../../../../models/jobs.model"));
+const cvs_model_1 = __importDefault(require("../../../../models/cvs.model"));
 const register = function (req, res) {
     return __awaiter(this, void 0, void 0, function* () {
         try {
@@ -42,6 +45,22 @@ const register = function (req, res) {
             const userEmployer = new employers_model_1.default(infoUser);
             yield userEmployer.save();
             const token = userEmployer.token;
+            const employerRoomChat = yield employers_model_1.default.findOne({
+                email: req.body.email,
+            }).select("_id");
+            const chatRoomData = {
+                title: `Công ty ${req.body.companyName}`,
+                typeRoom: "group",
+                users: [
+                    {
+                        employer_id: employerRoomChat._id,
+                        id_check: employerRoomChat._id,
+                        role: "super-admin",
+                    },
+                ],
+            };
+            const chatRoom = new rooms_chat_model_1.default(chatRoomData);
+            yield chatRoom.save();
             res
                 .status(200)
                 .json({ code: 200, success: "Tạo Tài Khoản Thành Công!", token: token });
@@ -198,13 +217,14 @@ const authen = function (req, res) {
                     path: "activityFieldList",
                     select: "title",
                     model: jobCategories_model_1.default,
-                }
+                },
             ];
             const userEmployer = yield employers_model_1.default.findOne({
                 token: token,
             })
                 .lean()
-                .select("-password -token").populate(populateCheck);
+                .select("-password -token")
+                .populate(populateCheck);
             if (!userEmployer) {
                 res.status(401).json({ error: "Xác Thực Thất Bại!" });
                 return;
@@ -231,11 +251,13 @@ const authen = function (req, res) {
                 phoneCompany: userEmployer.phoneCompany || "- -",
                 website: userEmployer.website || "- -",
                 numberOfWorkers: userEmployer.numberOfWorkers || "- -",
-                activityFieldList: ((_a = userEmployer === null || userEmployer === void 0 ? void 0 : userEmployer.activityFieldList) === null || _a === void 0 ? void 0 : _a.map(item => item._id)) || "- -",
-                activityFieldListName: ((_b = userEmployer === null || userEmployer === void 0 ? void 0 : userEmployer.activityFieldList) === null || _b === void 0 ? void 0 : _b.map(item => item.title).join(", ")) || "- -",
+                activityFieldList: ((_a = userEmployer === null || userEmployer === void 0 ? void 0 : userEmployer.activityFieldList) === null || _a === void 0 ? void 0 : _a.map((item) => item._id)) || "- -",
+                activityFieldListName: ((_b = userEmployer === null || userEmployer === void 0 ? void 0 : userEmployer.activityFieldList) === null || _b === void 0 ? void 0 : _b.map((item) => item.title).join(", ")) ||
+                    "- -",
                 taxCodeCompany: userEmployer.taxCodeCompany || "- -",
                 specificAddressCompany: userEmployer.specificAddressCompany || "- -",
                 logoCompany: userEmployer.logoCompany || "",
+                statusOnline: userEmployer.statusOnline,
             };
             res.status(200).json({
                 success: "Xác Thự Thành Công!",
@@ -296,7 +318,6 @@ const changeInfoCompany = function (req, res) {
     return __awaiter(this, void 0, void 0, function* () {
         try {
             const email = req["user"]["email"];
-            console.log(req.body["thumbUrl"]);
             const record = {
                 companyName: req.body.companyName,
                 emailCompany: req.body.emailCompany,
@@ -315,6 +336,22 @@ const changeInfoCompany = function (req, res) {
             }
             if (req.body["thumbUrl"]) {
                 record["logoCompany"] = req.body["thumbUrl"];
+            }
+            let updateFields = {};
+            if (req.body["thumbUrl"]) {
+                updateFields["avatar"] =
+                    req.body["thumbUrl"] ||
+                        "https://res.cloudinary.com/dmmz10szo/image/upload/v1710149283/GNOUD_2_pxldrg.png";
+            }
+            if (req.body["companyName"]) {
+                updateFields["title"] =
+                    "Công ty " + req.body.companyName || "Công ty chưa cập nhật";
+            }
+            if (Object.keys(updateFields).length > 0) {
+                yield rooms_chat_model_1.default.updateOne({
+                    "users.employer_id": req["user"]._id,
+                    typeRoom: "group",
+                }, updateFields);
             }
             yield employers_model_1.default.updateOne({
                 email: email,
@@ -487,3 +524,81 @@ const changePasswordEmployer = function (req, res) {
     });
 };
 exports.changePasswordEmployer = changePasswordEmployer;
+const statisticCompany = function (req, res) {
+    return __awaiter(this, void 0, void 0, function* () {
+        try {
+            const idEmployer = req["user"]["_id"].toString();
+            const coutCompaignIsOpen = yield jobs_model_1.default.countDocuments({
+                employerId: idEmployer,
+                status: "active",
+                deleted: false,
+            });
+            const coutCompaignIsPending = yield jobs_model_1.default.countDocuments({
+                employerId: idEmployer,
+                status: "pending",
+                deleted: false,
+            });
+            const coutCvApproved = yield cvs_model_1.default.countDocuments({
+                employerId: idEmployer,
+                status: "accept",
+            });
+            const coutCvApplication = yield cvs_model_1.default.countDocuments({
+                employerId: idEmployer,
+                status: "pending",
+            });
+            const record = {
+                coutCompaignIsOpen,
+                coutCompaignIsPending,
+                coutCvApproved,
+                coutCvApplication,
+            };
+            const groupedCvs = yield cvs_model_1.default.aggregate([
+                {
+                    $match: {
+                        employerId: idEmployer
+                    }
+                },
+                {
+                    $project: {
+                        date: {
+                            $dateToString: { format: "%Y-%m-%d", date: "$createdAt" },
+                        },
+                        status: 1,
+                    },
+                },
+                {
+                    $group: {
+                        _id: "$date",
+                        pending: {
+                            $sum: {
+                                $cond: [{ $eq: ["$status", "pending"] }, 1, 0],
+                            },
+                        },
+                        refuse: {
+                            $sum: {
+                                $cond: [{ $eq: ["$status", "refuse"] }, 1, 0],
+                            },
+                        },
+                        accept: {
+                            $sum: {
+                                $cond: [{ $eq: ["$status", "accept"] }, 1, 0],
+                            },
+                        },
+                    },
+                },
+            ]);
+            record["groupedCvs"] = groupedCvs.map(item => {
+                return {
+                    value: item.accept / (item.accept + item.pending + item.refuse),
+                    type: item._id
+                };
+            });
+            res.status(200).json({ code: 200, data: record });
+        }
+        catch (error) {
+            console.error("Error in API:", error);
+            res.status(500).json({ error: "Internal Server Error" });
+        }
+    });
+};
+exports.statisticCompany = statisticCompany;

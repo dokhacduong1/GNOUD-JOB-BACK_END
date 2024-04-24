@@ -18,6 +18,7 @@ export interface Find {
     listApprovedUsers?: any,
     deleted? :boolean
     code?: string,
+    slug?: string,
     countJobs?:number
 }
 

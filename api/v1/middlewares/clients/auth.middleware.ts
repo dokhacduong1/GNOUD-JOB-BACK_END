@@ -13,7 +13,7 @@ export const auth =async function (req: Request, res: Response,next : any): Prom
         }).select("-password -token");
         //Nếu token không khớp databse trả ra dữ liệu người dùng không hợp lệ
         if (!user) {
-             res.status(401).json({ error: "Dữ Liệu Người Dùng Không Hợp Lệ!" });
+             res.status(402).json({ error: "Dữ Liệu Người Dùng Không Hợp Lệ!",code:402 });
              return;
         }
         //Nếu có lưu user vừa tìm được vào req.user

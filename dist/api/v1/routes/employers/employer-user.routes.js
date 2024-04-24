@@ -39,6 +39,7 @@ router.post('/password/reset', validates.resetPassword, controller.resetPassword
 router.post('/upload-avatar', authMiddlewares.auth, uploadImgur.uplloadReact, controller.uploadAvatar);
 router.post('/change-info-employer', authMiddlewares.auth, validates.changeInfoUser, controller.changeInfoEmployer);
 router.post('/change-info-company', authMiddlewares.auth, validates.changeInfoCompany, uploadDriver.uplloadReact, controller.changeInfoCompany);
+router.get('/statistic-company', authMiddlewares.auth, controller.statisticCompany);
 router.post('/change-password', authMiddlewares.auth, validates.changePassword, controller.changePasswordEmployer);
 router.post('/verify-password', authMiddlewares.auth, validates.verifyPassword, controller.verifyPassword);
 router.post('/send-sms', authMiddlewares.auth, validates.sendEms, controller.sendEms);

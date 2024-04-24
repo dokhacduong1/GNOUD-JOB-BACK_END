@@ -12,7 +12,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.editCvByUser = exports.getCvByUser = exports.uploadCv = exports.recruitmentJob = exports.changeEmailSuggestions = exports.changeJobSuggestions = exports.changeInfoUser = exports.changePassword = exports.authen = exports.list = exports.detail = exports.resetPassword = exports.checkToken = exports.forgotPassword = exports.login = exports.register = exports.uploadAvatar = exports.allowSettingUser = void 0;
+exports.saveJob = exports.editCvByUser = exports.getCvByUser = exports.uploadCv = exports.recruitmentJob = exports.changeEmailSuggestions = exports.changeJobSuggestions = exports.changeInfoUser = exports.changePassword = exports.authen = exports.list = exports.detail = exports.resetPassword = exports.checkToken = exports.forgotPassword = exports.login = exports.register = exports.uploadAvatar = exports.allowSettingUser = void 0;
 const generateString_1 = require("../../../../helpers/generateString");
 const md5_1 = __importDefault(require("md5"));
 const user_model_1 = __importDefault(require("../../../../models/user.model"));
@@ -303,6 +303,8 @@ const authen = function (req, res) {
                 address: userClient.address || "",
                 dateOfBirth: userClient.dateOfBirth || "",
                 description: userClient.description || "",
+                statusOnline: userClient.statusOnline || false,
+                listJobSave: userClient.listJobSave || [],
             };
             res.status(200).json({
                 success: "Xác Thự Thành Công!",
@@ -478,7 +480,7 @@ const uploadCv = function (req, res) {
             yield user_model_1.default.updateOne({
                 _id: user._id,
             }, {
-                $push: { cv: objectNew }
+                $push: { cv: objectNew },
             });
             res.status(200).json({ code: 200, success: "Upload CV thành công!" });
         }
@@ -511,9 +513,9 @@ const editCvByUser = function (req, res) {
             const newNameCv = req.body.newNameCv;
             yield user_model_1.default.updateOne({
                 _id: user._id,
-                "cv.idFile": idFile
+                "cv.idFile": idFile,
             }, {
-                $set: { "cv.$.nameFile": newNameCv }
+                $set: { "cv.$.nameFile": newNameCv },
             });
             res.status(200).json({ code: 200, success: "Cập nhật CV thành công" });
         }
@@ -524,3 +526,43 @@ const editCvByUser = function (req, res) {
     });
 };
 exports.editCvByUser = editCvByUser;
+var Action;
+(function (Action) {
+    Action["SAVE"] = "save";
+    Action["DELETE"] = "delete";
+})(Action || (Action = {}));
+const saveJob = function (req, res) {
+    return __awaiter(this, void 0, void 0, function* () {
+        try {
+            const { idJob, action } = req.body;
+            const userId = req["user"]._id.toString();
+            const objectNew = {
+                idJob: idJob,
+                createdAt: new Date(),
+            };
+            switch (action) {
+                case Action.SAVE:
+                    yield user_model_1.default.updateOne({ _id: userId }, {
+                        $push: { listJobSave: objectNew },
+                    });
+                    res
+                        .status(200)
+                        .json({ code: 200, success: "Lưu công việc thành công" });
+                    break;
+                case Action.DELETE:
+                    yield user_model_1.default.updateOne({ _id: userId }, { $pull: { listJobSave: { idJob: idJob } } });
+                    res
+                        .status(200)
+                        .json({ code: 200, success: "Bỏ lưu công việc thành công" });
+                    break;
+                default:
+                    res.status(400).json({ code: 400, error: "Hành động không hợp lệ" });
+            }
+        }
+        catch (error) {
+            console.error("Error in API:", error);
+            res.status(500).json({ error: "Lỗi máy chủ nội bộ" });
+        }
+    });
+};
+exports.saveJob = saveJob;

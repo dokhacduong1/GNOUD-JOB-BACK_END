@@ -380,6 +380,8 @@ export const authen = async function (
       address: userClient.address || "",
       dateOfBirth: userClient.dateOfBirth || "",
       description: userClient.description || "",
+      statusOnline: userClient.statusOnline || false,
+      listJobSave: userClient.listJobSave || [],
     };
 
     res.status(200).json({
@@ -553,8 +555,8 @@ export const recruitmentJob = async function (
     };
     const record = new Cv(recordNew);
     await record.save();
-    const idCv = record._id; 
-   
+    const idCv = record._id;
+
     //Bắt đầu cập nhật
     await Job.updateOne(
       {
@@ -583,12 +585,12 @@ export const uploadCv = async function (
   try {
     // Lấy thông tin người dùng từ request
     const user = req["user"];
-   
+
     // Lấy idFile và nameFile từ body của request
     const idFile = req.body.file;
     let nameFile = req.body.fileName;
-    if(nameFile.includes(".pdf")){
-      nameFile = nameFile.replace(".pdf","");
+    if (nameFile.includes(".pdf")) {
+      nameFile = nameFile.replace(".pdf", "");
     }
     // Tạo một đối tượng mới với idFile và nameFile
     const objectNew = {
@@ -602,7 +604,7 @@ export const uploadCv = async function (
         _id: user._id,
       },
       {
-        $push: { cv: objectNew}
+        $push: { cv: objectNew },
       }
     );
 
@@ -628,13 +630,13 @@ export const getCvByUser = async function (
     const listCV = user.cv;
     res.status(200).json({ code: 200, data: listCV });
   } catch (error) {
-      // Ghi lỗi vào console nếu có lỗi xảy ra
-      console.error("Error in API:", error);
+    // Ghi lỗi vào console nếu có lỗi xảy ra
+    console.error("Error in API:", error);
 
-      // Trả về lỗi 500 nếu có lỗi xảy ra
-      res.status(500).json({ error: "Internal Server Error" });
+    // Trả về lỗi 500 nếu có lỗi xảy ra
+    res.status(500).json({ error: "Internal Server Error" });
   }
-}
+};
 // [GET] /api/v1/clients/users/edit-cv-user
 export const editCvByUser = async function (
   req: Request,
@@ -644,23 +646,85 @@ export const editCvByUser = async function (
     const user = req["user"];
     const idFile = req.body.idFile;
     const newNameCv = req.body.newNameCv;
-    
+
     await User.updateOne(
       {
         _id: user._id,
-        "cv.idFile": idFile
+        "cv.idFile": idFile,
       },
       {
-        $set: { "cv.$.nameFile": newNameCv }
+        $set: { "cv.$.nameFile": newNameCv },
       }
-    )
-  
+    );
+
     res.status(200).json({ code: 200, success: "Cập nhật CV thành công" });
   } catch (error) {
-      // Ghi lỗi vào console nếu có lỗi xảy ra
-      console.error("Error in API:", error);
+    // Ghi lỗi vào console nếu có lỗi xảy ra
+    console.error("Error in API:", error);
 
-      // Trả về lỗi 500 nếu có lỗi xảy ra
-      res.status(500).json({ error: "Internal Server Error" });
+    // Trả về lỗi 500 nếu có lỗi xảy ra
+    res.status(500).json({ error: "Internal Server Error" });
   }
+};
+
+// [POST] /api/v1/clients/users/save-job
+// Định nghĩa enum Action ngoài hàm
+enum Action {
+  SAVE = "save",
+  DELETE = "delete",
 }
+
+export const saveJob = async function (
+  req: Request,
+  res: Response
+): Promise<void> {
+  try {
+    // Sử dụng destructuring để lấy idJob và action từ req.body
+    const { idJob, action }: { idJob: string; action: string } = req.body;
+
+    // Lưu req["user"]._id vào biến userId để tránh lặp lại
+    const userId: string = req["user"]._id.toString();
+
+    const objectNew: {
+      idJob: string;
+      createdAt: Date;
+    } = {
+      idJob: idJob,
+      createdAt: new Date(),
+    };
+
+    // Sử dụng switch để xử lý các hành động khác nhau
+    switch (action) {
+      case Action.SAVE:
+        // Nếu hành động là SAVE, thêm idJob vào listJobSave của user
+        await User.updateOne(
+          { _id: userId },
+          {
+            $push: { listJobSave: objectNew },
+          }
+        );
+        res
+          .status(200)
+          .json({ code: 200, success: "Lưu công việc thành công" });
+        break;
+      case Action.DELETE:
+        // Nếu hành động là DELETE, xóa idJob khỏi listJobSave của user
+        await User.updateOne(
+          { _id: userId },
+          { $pull: { listJobSave: { idJob: idJob } } }
+        );
+        res
+          .status(200)
+          .json({ code: 200, success: "Bỏ lưu công việc thành công" });
+        break;
+      default:
+        res.status(400).json({ code: 400, error: "Hành động không hợp lệ" });
+    }
+  } catch (error) {
+    // Ghi lỗi vào console nếu có lỗi xảy ra
+    console.error("Error in API:", error);
+
+    // Trả về lỗi 500 nếu có lỗi xảy ra
+    res.status(500).json({ error: "Lỗi máy chủ nội bộ" });
+  }
+};

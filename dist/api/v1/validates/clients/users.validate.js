@@ -35,10 +35,11 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.editCvByUser = exports.uploadCv = exports.recruitmentJob = exports.changeEmailSuggestions = exports.changeJobSuggestions = exports.changeInfoUser = exports.changePassword = exports.allowSettingUser = exports.authen = exports.resetPassword = exports.checkToken = exports.forgotPassword = exports.login = exports.register = void 0;
+exports.saveJob = exports.editCvByUser = exports.uploadCv = exports.recruitmentJob = exports.changeEmailSuggestions = exports.changeJobSuggestions = exports.changeInfoUser = exports.changePassword = exports.allowSettingUser = exports.authen = exports.resetPassword = exports.checkToken = exports.forgotPassword = exports.login = exports.register = void 0;
 const user_model_1 = __importDefault(require("../../../../models/user.model"));
 const forgot_password_model_1 = __importDefault(require("../../../../models/forgot-password.model"));
 const md5 = __importStar(require("md5"));
+const jobs_model_1 = __importDefault(require("../../../../models/jobs.model"));
 const cvs_model_1 = __importDefault(require("../../../../models/cvs.model"));
 function validatePassword(password) {
     if (password.length < 6) {
@@ -445,7 +446,9 @@ const recruitmentJob = function (req, res, next) {
             return;
         }
         if (!req.body.employerId) {
-            res.status(401).json({ code: 401, error: "Vui lòng nhập id nhà tuyển dụng!" });
+            res
+                .status(401)
+                .json({ code: 401, error: "Vui lòng nhập id nhà tuyển dụng!" });
             return;
         }
         const exitsRequirement = yield cvs_model_1.default.findOne({
@@ -501,3 +504,35 @@ const editCvByUser = function (req, res, next) {
     });
 };
 exports.editCvByUser = editCvByUser;
+const saveJob = function (req, res, next) {
+    return __awaiter(this, void 0, void 0, function* () {
+        const idJob = req.body.idJob;
+        const action = req.body.action;
+        if (!idJob) {
+            res.status(401).json({ code: 401, error: "Vui lòng nhập id công việc!" });
+            return;
+        }
+        if (!action) {
+            res.status(401).json({ code: 401, error: "Vui lòng nhập hành động!" });
+            return;
+        }
+        const exitedJob = yield jobs_model_1.default.findOne({
+            _id: idJob,
+        });
+        if (!exitedJob) {
+            res.status(401).json({ code: 401, error: "Công việc không tồn tại!" });
+            return;
+        }
+        if (action === "save") {
+            const exitedJob = yield user_model_1.default.findOne({
+                "listJobSave.idJob": idJob,
+            });
+            if (exitedJob) {
+                res.status(401).json({ code: 401, error: "Công việc đã được lưu trước đó!" });
+                return;
+            }
+        }
+        next();
+    });
+};
+exports.saveJob = saveJob;

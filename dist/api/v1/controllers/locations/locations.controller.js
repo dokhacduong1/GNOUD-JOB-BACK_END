@@ -9,7 +9,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getCoordinate = exports.getDetailedAddress = exports.getAreaDetails = void 0;
+exports.getFullAddress = exports.getCoordinate = exports.getDetailedAddress = exports.getAreaDetails = void 0;
 const allLocation_1 = require("../../../../helpers/allLocation");
 const selectFields_1 = require("../../../../helpers/selectFields");
 const getAreaDetails = function (req, res) {
@@ -81,7 +81,7 @@ const getCoordinate = function (req, res) {
             const { place_id } = result.result;
             const data = {
                 location,
-                place_id
+                place_id,
             };
             res.status(200).json({ code: 200, data });
         }
@@ -92,3 +92,23 @@ const getCoordinate = function (req, res) {
     });
 };
 exports.getCoordinate = getCoordinate;
+const getFullAddress = function (req, res) {
+    return __awaiter(this, void 0, void 0, function* () {
+        try {
+            const input = req.body.input;
+            const result = yield (0, allLocation_1.fullAddress)(input);
+            if (!result["predictions"] || result.status !== "OK") {
+                res.status(200).json({ code: 200, data: [] });
+                return;
+            }
+            const fields = ["description", "place_id", "structured_formatting"];
+            const resultConvert = (0, selectFields_1.selectFields)(result["predictions"], fields);
+            res.status(200).json({ code: 200, resultConvert });
+        }
+        catch (error) {
+            console.error("Error in API:", error);
+            res.status(500).json({ error: "Internal Server Error" });
+        }
+    });
+};
+exports.getFullAddress = getFullAddress;

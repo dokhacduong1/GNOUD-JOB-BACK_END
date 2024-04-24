@@ -1,5 +1,8 @@
 import mongoose from "mongoose";
 
+var slug = require("mongoose-slug-updater");
+
+mongoose.plugin(slug);
 
 const employerSchema = new mongoose.Schema(
     {
@@ -24,10 +27,23 @@ const employerSchema = new mongoose.Schema(
         numberOfWorkers: String,
         taxCodeCompany: String,
         specificAddressCompany: String,
+        bannerCompany:{
+            type: String,
+            default: "https://res.cloudinary.com/dmmz10szo/image/upload/v1713900525/GNOUD_n4xqix.png"
+        },
+        slug: {
+            type: String,
+            slug: "companyName",
+            unique: true,
+          },
         activityFieldList:{
             type: Array,
             default: []
         },
+        statusOnline: {
+            type: Boolean,
+            default: false,
+          },
         logoCompany: {
             type: String,
             default: "https://res.cloudinary.com/dmmz10szo/image/upload/v1710149283/GNOUD_2_pxldrg.png"

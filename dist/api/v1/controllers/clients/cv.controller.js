@@ -12,26 +12,30 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.auth = void 0;
-const user_model_1 = __importDefault(require("../../../../models/user.model"));
-const auth = function (req, res, next) {
+exports.getCvInfoUser = void 0;
+const employers_model_1 = __importDefault(require("../../../../models/employers.model"));
+const getCvInfoUser = function (req, res) {
     return __awaiter(this, void 0, void 0, function* () {
-        if (req.headers.authorization) {
-            const token = req.headers.authorization.split(" ")[1];
-            const user = yield user_model_1.default.findOne({
-                token: token
-            }).select("-password -token");
-            if (!user) {
-                res.status(402).json({ error: "Dữ Liệu Người Dùng Không Hợp Lệ!", code: 402 });
-                return;
+        try {
+            let data;
+            if (req["infoRoom"]) {
+                data = {
+                    fullName: req["infoRoom"].title,
+                    logoCompany: req["infoRoom"].avatar,
+                    statusOnline: true,
+                };
             }
-            req["user"] = user;
-            next();
+            else {
+                const idUser = req.params.idUser;
+                data = yield employers_model_1.default.findOne({ _id: idUser }).select("email phone fullName image statusOnline");
+                data["logoCompany"] = data["image"];
+            }
+            res.status(200).json({ data: data, code: 200 });
         }
-        else {
-            res.status(401).json({ error: "Bạn Không Có Quyền Truy Cập!" });
-            return;
+        catch (error) {
+            console.error("Error in API:", error);
+            res.status(500).json({ error: "Internal Server Error" });
         }
     });
 };
-exports.auth = auth;
+exports.getCvInfoUser = getCvInfoUser;

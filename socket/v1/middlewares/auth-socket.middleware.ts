@@ -10,6 +10,7 @@ const findUserOrEmployer = async (token: string, role: string) => {
   // Tìm user từ token
   if (role === Role.CLIENT) {
     const user = await User.findOne({ token }).select("-password -token");
+    await User.updateOne({ token: token }, { statusOnline: true });
     return user;
   }
 
@@ -18,6 +19,8 @@ const findUserOrEmployer = async (token: string, role: string) => {
     const employer = await Employer.findOne({ token }).select(
       "-password -token"
     );
+    await Employer.updateOne({ token: token }, { statusOnline: true });
+
     return employer;
   }
   return [];

@@ -31,6 +31,7 @@ const jobSchema = new mongoose.Schema(
     featured: Boolean,
     end_date: Date,
     deletedAt: Date,
+    yearsOfExperience:String,
     city: {
       slug: String,
       code: Number,
@@ -44,21 +45,18 @@ const jobSchema = new mongoose.Schema(
       type: Date,
       default: Date.now,
     },
-    listProfileRequirement: {
-      type: Array,
-      default: [
-        {
-          email: String,
-          phone: String,
-          id_file_cv: String,
-          introducing_letter: String,
-          status: String,
-          dateTime: Date,
-          idUser: String,
-          countView: Number,
-        },
-      ],
-    },
+     listProfileRequirement: [
+   
+    //     email: String,
+    //     phone: String,
+    //     id_file_cv: String,
+    //     introducing_letter: String,
+    //     status: String,
+    //     dateTime: Date,
+    //     idUser: String,
+    //     countView: Number,
+    
+    ],
     listProfileViewJob: {
       type: Array,
       default: [],

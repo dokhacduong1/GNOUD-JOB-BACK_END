@@ -411,7 +411,6 @@ const getPdfToDriver = function (req, res) {
 };
 exports.getPdfToDriver = getPdfToDriver;
 const actionCv = function (req, res) {
-    var _a, _b;
     return __awaiter(this, void 0, void 0, function* () {
         try {
             const { email, idJob, status, } = req.body;
@@ -441,29 +440,70 @@ const actionCv = function (req, res) {
                 return;
             }
             const profile = jobRecord.listProfileRequirement.find((item) => item.email === email);
-            jobRecord["profileName"] = (_a = profile === null || profile === void 0 ? void 0 : profile.idUser) === null || _a === void 0 ? void 0 : _a.fullName;
+            jobRecord["profileName"] = profile === null || profile === void 0 ? void 0 : profile.idUser["fullName"];
             if (status === "refuse") {
-                yield cvs_model_1.default.deleteOne({ email: email });
+                const checkCv = yield cvs_model_1.default.findOneAndUpdate({
+                    email: email,
+                    idJob: idJob,
+                }, {
+                    status: "refuse"
+                });
+                if (checkCv) {
+                    yield jobs_model_1.default.updateOne({
+                        "listProfileRequirement": checkCv._id
+                    }, {
+                        $pull: { listProfileRequirement: checkCv._id }
+                    });
+                }
                 yield (0, sendMail_1.sendMailEmployerRefureCv)(email, emailSubject, jobRecord);
             }
             else if (status === "accept") {
                 yield cvs_model_1.default.updateOne({ email: email, idJob: idJob }, { status: "accept" });
+                yield jobs_model_1.default.updateOne({});
                 yield (0, sendMail_1.sendMailEmployerAcceptCv)(email, emailSubject, jobRecord);
-                const chatRoomData = {
+                const exitedRoomChatFriend = yield rooms_chat_model_1.default.findOne({
+                    "users.user_id": profile === null || profile === void 0 ? void 0 : profile.idUser["_id"],
+                    "users.employer_id": profile["employerId"],
                     typeRoom: "friend",
-                    users: [
-                        {
-                            user_id: (_b = profile === null || profile === void 0 ? void 0 : profile.idUser) === null || _b === void 0 ? void 0 : _b._id,
-                            role: "super-admin",
+                });
+                if (!exitedRoomChatFriend) {
+                    const chatRoomData = {
+                        typeRoom: "friend",
+                        users: [
+                            {
+                                user_id: profile === null || profile === void 0 ? void 0 : profile.idUser["_id"],
+                                id_check: profile === null || profile === void 0 ? void 0 : profile.idUser["_id"],
+                                role: "super-admin",
+                            },
+                            {
+                                employer_id: profile["employerId"],
+                                id_check: profile["employerId"],
+                                role: "super-admin",
+                            },
+                        ],
+                    };
+                    const chatRoom = new rooms_chat_model_1.default(chatRoomData);
+                    yield chatRoom.save();
+                }
+                const roomChatGroupExit = yield rooms_chat_model_1.default.findOne({
+                    "users.employer_id": profile["employerId"],
+                    typeRoom: "group",
+                    "users.user_id": profile === null || profile === void 0 ? void 0 : profile.idUser["_id"],
+                });
+                if (!roomChatGroupExit) {
+                    yield rooms_chat_model_1.default.findOneAndUpdate({
+                        "users.employer_id": profile["employerId"],
+                        typeRoom: "group",
+                    }, {
+                        $push: {
+                            users: {
+                                user_id: profile === null || profile === void 0 ? void 0 : profile.idUser["_id"],
+                                id_check: profile === null || profile === void 0 ? void 0 : profile.idUser["_id"],
+                                role: "user",
+                            },
                         },
-                        {
-                            user_id: profile === null || profile === void 0 ? void 0 : profile.employerId,
-                            role: "super-admin",
-                        },
-                    ],
-                };
-                const chatRoom = new rooms_chat_model_1.default(chatRoomData);
-                yield chatRoom.save();
+                    });
+                }
             }
             res.status(200).json({ code: 200, success: "Cập nhật dữ liệu thành công" });
         }

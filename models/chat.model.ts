@@ -12,6 +12,11 @@ const chatSchema = new mongoose.Schema(
       default: false,
     },
     deletedAt: Date,
+    read:{
+      type: Boolean,
+      default: false,
+    
+    }
   },
   {
     timestamps: true,

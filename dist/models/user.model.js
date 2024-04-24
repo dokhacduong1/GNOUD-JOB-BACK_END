@@ -34,7 +34,7 @@ const userSchema = new mongoose_1.default.Schema({
         {
             idFile: String,
             nameFile: String,
-        }
+        },
     ],
     skill_id: Array,
     job_categorie_id: String,
@@ -43,6 +43,16 @@ const userSchema = new mongoose_1.default.Schema({
     image: String,
     token: String,
     emailSuggestions: Array,
+    listJobSave: [
+        {
+            idJob: String,
+            createdAt: Date,
+        },
+    ],
+    statusOnline: {
+        type: Boolean,
+        default: false,
+    },
     activeJobSearch: {
         type: Boolean,
         default: false,

@@ -23,10 +23,12 @@ const findUserOrEmployer = (token, role) => __awaiter(void 0, void 0, void 0, fu
     })(Role || (Role = {}));
     if (role === Role.CLIENT) {
         const user = yield user_model_1.default.findOne({ token }).select("-password -token");
+        yield user_model_1.default.updateOne({ token: token }, { statusOnline: true });
         return user;
     }
     if (role === Role.EMPLOYER) {
         const employer = yield employers_model_1.default.findOne({ token }).select("-password -token");
+        yield employers_model_1.default.updateOne({ token: token }, { statusOnline: true });
         return employer;
     }
     return [];

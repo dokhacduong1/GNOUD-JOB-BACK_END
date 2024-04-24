@@ -29,11 +29,11 @@ const userSchema = new mongoose.Schema(
       default:
         "https://lh3.googleusercontent.com/d/1ILtAxkD9TrKMtGQkxX9eThmrMjCp49W0",
     },
-    cv:[
+    cv: [
       {
         idFile: String,
         nameFile: String,
-      }
+      },
     ],
     skill_id: Array,
     job_categorie_id: String,
@@ -42,6 +42,16 @@ const userSchema = new mongoose.Schema(
     image: String,
     token: String,
     emailSuggestions: Array,
+    listJobSave: [
+      {
+        idJob: String,
+        createdAt:Date,
+      },
+    ],
+    statusOnline: {
+      type: Boolean,
+      default: false,
+    },
     activeJobSearch: {
       type: Boolean,
       default: false,

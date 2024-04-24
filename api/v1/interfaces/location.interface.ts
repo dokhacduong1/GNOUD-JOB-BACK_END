@@ -20,3 +20,12 @@ export interface CoordinateResultInterface {
       structured_formatting: any;
     }>;
   }
+
+  export interface AddressFullResultInterface {
+    status: string;
+    predictions: Array<{
+      description: string;
+      place_id: string;
+      structured_formatting: any;
+    }>;
+  }

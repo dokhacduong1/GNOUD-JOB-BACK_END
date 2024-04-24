@@ -500,8 +500,10 @@ export const recruitmentJob = async function (
     res.status(401).json({ code: 401, error: "Vui lòng nhập id công việc!" });
     return;
   }
-  if(!req.body.employerId){
-    res.status(401).json({ code: 401, error: "Vui lòng nhập id nhà tuyển dụng!" });
+  if (!req.body.employerId) {
+    res
+      .status(401)
+      .json({ code: 401, error: "Vui lòng nhập id nhà tuyển dụng!" });
     return;
   }
   //Check xem đã ứng tuyển chưa
@@ -584,5 +586,39 @@ export const editCvByUser = async function (
 
   // Nếu không tìm thấy CV, chuyển đến middleware tiếp theo
 
+  next();
+};
+
+export const saveJob = async function (
+  req: Request,
+  res: Response,
+  next: any
+): Promise<void> {
+  const idJob : string = req.body.idJob;
+  const action : string = req.body.action;
+  if (!idJob) {
+    res.status(401).json({ code: 401, error: "Vui lòng nhập id công việc!" });
+    return;
+  }
+  if (!action) {
+    res.status(401).json({ code: 401, error: "Vui lòng nhập hành động!" });
+    return;
+  }
+  const exitedJob = await Job.findOne({
+    _id: idJob,
+  });
+  if (!exitedJob) {
+    res.status(401).json({ code: 401, error: "Công việc không tồn tại!" });
+    return;
+  }
+  if (action === "save") {
+    const exitedJob = await User.findOne({
+      "listJobSave.idJob": idJob,
+    });
+    if (exitedJob) {
+      res.status(401).json({ code: 401, error: "Công việc đã được lưu trước đó!" });
+      return;
+    }
+  }
   next();
 };

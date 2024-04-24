@@ -17,6 +17,8 @@ router.post('/list',authMiddlewares.auth,controller.list)
 router.post('/change-password',authMiddlewares.auth,validates.changePassword,controller.changePassword)
 router.post('/change-info-user',authMiddlewares.auth,validates.changeInfoUser,controller.changeInfoUser)
 router.post('/recruitment-job',authMiddlewares.auth,validates.recruitmentJob,uploadDriver.uplloadReactPdf,controller.recruitmentJob)
+router.post('/save-job',authMiddlewares.auth,validates.saveJob,controller.saveJob)
+
 
 router.post('/change-job-suggestions',authMiddlewares.auth,validates.changeJobSuggestions,controller.changeJobSuggestions)
 router.post('/change-email-suggestions',authMiddlewares.auth,validates.changeEmailSuggestions,controller.changeEmailSuggestions)

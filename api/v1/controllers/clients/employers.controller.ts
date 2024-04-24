@@ -116,15 +116,17 @@ export const coutJobs = async function (
       status: "active",
     };
     //Lấy ra tất cả các công ty.
-    const records = await Employer.find(find).select("companyName image logoCompany").sort({ companyName: 1 });
- 
+    const records = await Employer.find(find)
+      .select("companyName image logoCompany")
+      .sort({ companyName: 1 });
+
     //Tìm tất cả các công việc.
     const convertDataPromises = records.map(async (record) => {
-        const countJob = await Job.countDocuments({ employerId: record._id });
-        return {
-            ...record.toObject(),
-            ["countJobs"]: countJob
-        };
+      const countJob = await Job.countDocuments({ employerId: record._id });
+      return {
+        ...record.toObject(),
+        ["countJobs"]: countJob,
+      };
     });
     //Chạy promise all để chờ tất cả các promise chạy xong.Vì ở đây dùng map nên phải chờ tất cả các promise chạy xong.
     const convertData = await Promise.all(convertDataPromises);
@@ -133,6 +135,65 @@ export const coutJobs = async function (
   } catch (error) {
     //Thông báo lỗi 500 đến người dùng server lỗi.
     console.error("Error in API:", error);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+};
+
+// [GET] /api/v1/client/employers/get-company/:slug
+export const getCompany = async function (
+  req: Request,
+  res: Response
+): Promise<void> {
+  try {
+    // Bắt đầu khối try-catch để xử lý lỗi
+    const { slug } = req.params; // Lấy giá trị slug từ params của yêu cầu
+    const find: EmployerInterface.Find = {
+      // Định nghĩa điều kiện tìm kiếm
+      deleted: false, // Chỉ tìm những công ty chưa bị xóa
+      slug, // Tìm công ty có slug tương ứng
+    };
+    // Tìm công ty đầu tiên thỏa mãn điều kiện, loại bỏ một số trường không cần thiết và chuyển kết quả về dạng plain JavaScript object
+    const record = await Employer.findOne(find).select("-password -phoneNumber -listApprovedUsers -email -token ").lean();
+
+    if (!record) {
+      // Nếu không tìm thấy công ty thì trả về thông báo lỗi cho client với mã trạng thái 404
+      res.status(200).json({ data: [], code: 200, employersWithJobCounts: [] });
+      return;
+    }
+    // Lấy danh sách lĩnh vực hoạt động của công ty, nếu không có thì mặc định là mảng rỗng
+    const activityFieldList = record?.activityFieldList ?? [];
+    // Tìm các công ty khác trong cùng lĩnh vực, giới hạn kết quả là 6 công ty và sắp xếp theo tên công ty
+    const findEmployersInIndustry = await Employer.find({
+      activityFieldList: { $in: activityFieldList },
+      _id: { $ne: record?._id },
+    })
+      .select("companyName image logoCompany slug")
+      .sort({ companyName: 1 })
+      .limit(6)
+      .lean();
+
+    // Đếm số lượng công việc của mỗi công ty trong danh sách
+    const countJobsPromises = findEmployersInIndustry.map(async (item) => {
+      const countJob = await Job.countDocuments({ employerId: item._id });
+      return {
+        ...item,
+        countJobs: countJob,
+      };
+    });
+
+    // Chờ tất cả các Promise hoàn thành và lấy kết quả
+    const employersWithJobCounts = await Promise.all(countJobsPromises);
+
+    // Mã hóa dữ liệu trước khi trả về
+    const encryptedDataConvert = encryptedData(record);
+    // Trả về dữ liệu cho client với mã trạng thái 200
+    res
+      .status(200)
+      .json({ data: encryptedDataConvert, code: 200, employersWithJobCounts });
+  } catch (error) {
+    // Xử lý lỗi nếu có
+    console.error("Error in API:", error); // In lỗi ra console
+    // Trả về thông báo lỗi cho client với mã trạng thái 500
     res.status(500).json({ error: "Internal Server Error" });
   }
 };

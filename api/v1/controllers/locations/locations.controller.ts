@@ -1,7 +1,16 @@
 import e, { Request, Response } from "express";
-import { Coordinate, areaDetails, detailedAddress } from "../../../../helpers/allLocation";
+import {
+  Coordinate,
+  areaDetails,
+  detailedAddress,
+  fullAddress,
+} from "../../../../helpers/allLocation";
 import { selectFields } from "../../../../helpers/selectFields";
-import { CoordinateResultInterface, DetailedAddressResultInterface } from "../../interfaces/location.interface";
+import {
+  AddressFullResultInterface,
+  CoordinateResultInterface,
+  DetailedAddressResultInterface,
+} from "../../interfaces/location.interface";
 
 export const getAreaDetails = async function (
   req: Request,
@@ -12,7 +21,6 @@ export const getAreaDetails = async function (
     const keyword = req.body.keyword;
     //Gọi hàm này lấy ra xã/phường,quận/huyện,tỉnh/thành phố
 
-   
     const result = await areaDetails(keyword);
     //Nếu không có dữ liệu trả về thì trả về một mảng rỗng
     if (result["predictions"].length === 0) {
@@ -58,7 +66,12 @@ export const getDetailedAddress = async function (
     const city = req.body.city;
     const keyword = req.body.keyword;
     //Gọi hàm này lấy chi tiết địa chỉ từ xã/phường,quận/huyện,tỉnh/thành phố
-    const result : DetailedAddressResultInterface = await detailedAddress(ward, district, city, keyword);
+    const result: DetailedAddressResultInterface = await detailedAddress(
+      ward,
+      district,
+      city,
+      keyword
+    );
     //Nếu không có dữ liệu trả về thì trả về một mảng rỗng
     if (result["status"] !== "OK") {
       res.status(200).json({ code: 200, data: [] });
@@ -75,33 +88,56 @@ export const getDetailedAddress = async function (
     res.status(500).json({ error: "Internal Server Error" });
   }
 };
-
+//get-full-address
 export const getCoordinate = async function (
-    req: Request,
-    res: Response
-  ): Promise<void> {
-    try {
-        
-          const placeid: string = req.body.placeid;
-          const result: CoordinateResultInterface = await Coordinate(placeid);
-     
-          if (!result["result"] || result.status !== "OK") {
-            res.status(200).json({ code: 200, data: [] });
-            return;
-          }
-      
-          const { location } = result.result.geometry;
-          const { place_id } = result.result;
-      
-          const data = {
-            location,
-            place_id
-          };
-      
-          res.status(200).json({ code: 200, data });
+  req: Request,
+  res: Response
+): Promise<void> {
+  try {
+    const placeid: string = req.body.placeid;
+    const result: CoordinateResultInterface = await Coordinate(placeid);
 
-    } catch (error) {
-      console.error("Error in API:", error);
-      res.status(500).json({ error: "Internal Server Error" });
+    if (!result["result"] || result.status !== "OK") {
+      res.status(200).json({ code: 200, data: [] });
+      return;
     }
-  };
+
+    const { location } = result.result.geometry;
+    const { place_id } = result.result;
+
+    const data = {
+      location,
+      place_id,
+    };
+
+    res.status(200).json({ code: 200, data });
+  } catch (error) {
+    console.error("Error in API:", error);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+};
+
+export const getFullAddress = async function (
+  req: Request,
+  res: Response
+): Promise<void> {
+  try {
+    const input: string = req.body.input;
+    const result: AddressFullResultInterface = await fullAddress(input);
+
+    if (!result["predictions"] || result.status !== "OK") {
+      res.status(200).json({ code: 200, data: [] });
+      return;
+    }
+
+    //Chọn những trường cần thiết
+    const fields = ["description", "place_id", "structured_formatting"];
+    //Chuyển đổi dữ liệu
+    const resultConvert = selectFields(result["predictions"], fields);
+
+    res.status(200).json({ code: 200, resultConvert });
+  } catch (error) {
+    console.error("Error in API:", error);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+};

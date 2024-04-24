@@ -12,7 +12,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getCvApplyAccept = exports.getCvApply = void 0;
+exports.getCvInfoUser = exports.getCvApplyAccept = exports.getCvApply = void 0;
 const cvs_model_1 = __importDefault(require("../../../../models/cvs.model"));
 const jobs_model_1 = __importDefault(require("../../../../models/jobs.model"));
 const user_model_1 = __importDefault(require("../../../../models/user.model"));
@@ -82,7 +82,11 @@ const getCvApplyAccept = function (req, res) {
                     model: user_model_1.default,
                 },
             ];
-            const record = yield cvs_model_1.default.find(find).populate(populate).select("idUser");
+            const record = yield cvs_model_1.default.find(find)
+                .populate(populate)
+                .select("idUser")
+                .sort({ createdAt: -1 })
+                .limit(7);
             const convertRecord = record.map((item) => item.idUser);
             res.status(200).json({ data: convertRecord, code: 200 });
         }
@@ -93,3 +97,27 @@ const getCvApplyAccept = function (req, res) {
     });
 };
 exports.getCvApplyAccept = getCvApplyAccept;
+const getCvInfoUser = function (req, res) {
+    return __awaiter(this, void 0, void 0, function* () {
+        try {
+            let data;
+            if (req["infoRoom"]) {
+                data = {
+                    fullName: req["infoRoom"].title,
+                    avatar: req["infoRoom"].avatar,
+                    statusOnline: true,
+                };
+            }
+            else {
+                const idUser = req.params.idUser;
+                data = yield user_model_1.default.findOne({ _id: idUser }).select("email phone fullName avatar statusOnline");
+            }
+            res.status(200).json({ data, code: 200 });
+        }
+        catch (error) {
+            console.error("Error in API:", error);
+            res.status(500).json({ error: "Internal Server Error" });
+        }
+    });
+};
+exports.getCvInfoUser = getCvInfoUser;

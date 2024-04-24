@@ -62,7 +62,6 @@ export const getCvApply = async function (
   }
 };
 
-
 // [GET] /api/v1/clients/employer/cvs/get-cv-apply-accept
 export const getCvApplyAccept = async function (
   req: Request,
@@ -86,12 +85,40 @@ export const getCvApplyAccept = async function (
         model: User,
       },
     ];
-    const record = await Cv.find(find).populate(populate).select("idUser");
+    const record = await Cv.find(find)
+      .populate(populate)
+      .select("idUser")
+      .sort({ createdAt: -1 })
+      .limit(7);
     const convertRecord = record.map((item) => item.idUser);
     res.status(200).json({ data: convertRecord, code: 200 });
   } catch (error) {
-      //Thông báo lỗi 500 đến người dùng server lỗi.
-      console.error("Error in API:", error);
-      res.status(500).json({ error: "Internal Server Error" });
+    //Thông báo lỗi 500 đến người dùng server lỗi.
+    console.error("Error in API:", error);
+    res.status(500).json({ error: "Internal Server Error" });
   }
-}
+};
+
+// [GET] /api/v1/clients/employer/cvs/get-cv-info-user
+export const getCvInfoUser = async function (
+  req: Request,
+  res: Response
+): Promise<void> {
+  try {
+    let data : any;
+    if(req["infoRoom"]){
+      data = {
+        fullName: req["infoRoom"].title,
+        avatar: req["infoRoom"].avatar,
+        statusOnline: true,
+      };
+    } else {
+      const idUser = req.params.idUser;
+      data = await User.findOne({ _id: idUser }).select("email phone fullName avatar statusOnline");
+    }
+    res.status(200).json({ data, code: 200 });
+  } catch (error) {
+    console.error("Error in API:", error);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+};

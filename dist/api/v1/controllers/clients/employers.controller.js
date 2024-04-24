@@ -12,7 +12,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.coutJobs = exports.index = void 0;
+exports.getCompany = exports.coutJobs = exports.index = void 0;
 const employers_model_1 = __importDefault(require("../../../../models/employers.model"));
 const filterQueryStatus_1 = require("../../../../helpers/filterQueryStatus.");
 const filterQuerySearch_1 = require("../../../../helpers/filterQuerySearch");
@@ -85,7 +85,9 @@ const coutJobs = function (req, res) {
                 deleted: false,
                 status: "active",
             };
-            const records = yield employers_model_1.default.find(find).select("companyName image logoCompany").sort({ companyName: 1 });
+            const records = yield employers_model_1.default.find(find)
+                .select("companyName image logoCompany")
+                .sort({ companyName: 1 });
             const convertDataPromises = records.map((record) => __awaiter(this, void 0, void 0, function* () {
                 const countJob = yield jobs_model_1.default.countDocuments({ employerId: record._id });
                 return Object.assign(Object.assign({}, record.toObject()), { ["countJobs"]: countJob });
@@ -101,3 +103,43 @@ const coutJobs = function (req, res) {
     });
 };
 exports.coutJobs = coutJobs;
+const getCompany = function (req, res) {
+    var _a;
+    return __awaiter(this, void 0, void 0, function* () {
+        try {
+            const { slug } = req.params;
+            const find = {
+                deleted: false,
+                slug,
+            };
+            const record = yield employers_model_1.default.findOne(find).select("-password -phoneNumber -listApprovedUsers -email -token ").lean();
+            if (!record) {
+                res.status(200).json({ data: [], code: 200, employersWithJobCounts: [] });
+                return;
+            }
+            const activityFieldList = (_a = record === null || record === void 0 ? void 0 : record.activityFieldList) !== null && _a !== void 0 ? _a : [];
+            const findEmployersInIndustry = yield employers_model_1.default.find({
+                activityFieldList: { $in: activityFieldList },
+                _id: { $ne: record === null || record === void 0 ? void 0 : record._id },
+            })
+                .select("companyName image logoCompany slug")
+                .sort({ companyName: 1 })
+                .limit(6)
+                .lean();
+            const countJobsPromises = findEmployersInIndustry.map((item) => __awaiter(this, void 0, void 0, function* () {
+                const countJob = yield jobs_model_1.default.countDocuments({ employerId: item._id });
+                return Object.assign(Object.assign({}, item), { countJobs: countJob });
+            }));
+            const employersWithJobCounts = yield Promise.all(countJobsPromises);
+            const encryptedDataConvert = (0, encryptedData_1.encryptedData)(record);
+            res
+                .status(200)
+                .json({ data: encryptedDataConvert, code: 200, employersWithJobCounts });
+        }
+        catch (error) {
+            console.error("Error in API:", error);
+            res.status(500).json({ error: "Internal Server Error" });
+        }
+    });
+};
+exports.getCompany = getCompany;

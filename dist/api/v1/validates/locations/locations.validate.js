@@ -9,7 +9,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getCoordinate = exports.getDetailedAddress = exports.getAreaDetails = void 0;
+exports.getFullAddress = exports.getCoordinate = exports.getDetailedAddress = exports.getAreaDetails = void 0;
 const getAreaDetails = function (req, res, next) {
     return __awaiter(this, void 0, void 0, function* () {
         try {
@@ -72,3 +72,19 @@ const getCoordinate = function (req, res, next) {
     });
 };
 exports.getCoordinate = getCoordinate;
+const getFullAddress = function (req, res, next) {
+    return __awaiter(this, void 0, void 0, function* () {
+        try {
+            if (!req.body.input) {
+                res.status(400).json({ code: 401, error: "Vui lòng nhập từ khóa" });
+                return;
+            }
+            next();
+        }
+        catch (error) {
+            console.error("Error in API:", error);
+            res.status(500).json({ error: "Internal Server Error" });
+        }
+    });
+};
+exports.getFullAddress = getFullAddress;

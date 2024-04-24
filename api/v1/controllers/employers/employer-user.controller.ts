@@ -6,7 +6,7 @@ import { generateRandomString } from "../../../../helpers/generateString";
 import ForgotPasswordEmployer from "../../../../models/forgot-password-employer.model";
 import { sendMailEmployer } from "../../../../helpers/sendMail";
 import EmployerCounter from "../../../../models/employer-counter";
-import axios from "axios";
+
 import ActivePhoneEmployer from "../../../../models/active-phone-employer";
 import {
   getSession,
@@ -16,6 +16,9 @@ import {
 } from "../../../../helpers/smsPhoneSend";
 import { POPULATE } from "../../interfaces/populate.interface";
 import JobCategories from "../../../../models/jobCategories.model";
+import RoomChat from "../../../../models/rooms-chat.model";
+import Job from "../../../../models/jobs.model";
+import Cv from "../../../../models/cvs.model";
 
 // [POST] /api/v1/clients/employer/register
 export const register = async function (
@@ -23,12 +26,14 @@ export const register = async function (
   res: Response
 ): Promise<void> {
   try {
+    // Tăng giá trị count trong bảng EmployerCounter lên 1 và lấy giá trị mới
     const counter = await EmployerCounter.findOneAndUpdate(
       {},
       { $inc: { count: 1 } },
       { new: true, upsert: true }
     );
-    //Lấy info người dùng gửi lên xong lưu vào object infoUser
+
+    // Lấy thông tin người dùng từ request và lưu vào object infoUser
     const infoUser: EmployerInterface.Find = {
       address: req.body.address,
       companyName: req.body.companyName,
@@ -43,17 +48,41 @@ export const register = async function (
       code: counter.count.toString(),
     };
 
-    //Lưu tài khoản vừa tạo vào database
+    // Tạo mới một đối tượng Employer và lưu vào database
     const userEmployer = new Employer(infoUser);
     await userEmployer.save();
-    //Lưu token vừa tạo vào cookie
+
+    // Lấy token từ userEmployer
     const token: string = userEmployer.token;
 
+    // Tìm employer dựa vào email
+    const employerRoomChat = await Employer.findOne({
+      email: req.body.email,
+    }).select("_id");
+
+    // Định nghĩa dữ liệu cho phòng chat mới
+    const chatRoomData = {
+      title: `Công ty ${req.body.companyName}`,
+      typeRoom: "group",
+      users: [
+        {
+          employer_id: employerRoomChat._id,
+          id_check: employerRoomChat._id,
+          role: "super-admin",
+        },
+      ],
+    };
+
+    // Tạo mới một đối tượng RoomChat và lưu vào database
+    const chatRoom = new RoomChat(chatRoomData);
+    await chatRoom.save();
+
+    // Trả về response thành công cùng với token
     res
       .status(200)
       .json({ code: 200, success: "Tạo Tài Khoản Thành Công!", token: token });
   } catch (error) {
-    //Thông báo lỗi 500 đến người dùng server lỗi.
+    // Log lỗi và trả về response lỗi
     console.error("Error in API:", error);
     res.status(500).json({ code: 500, error: "Internal Server Error" });
   }
@@ -253,14 +282,15 @@ export const authen = async function (
         path: "activityFieldList",
         select: "title",
         model: JobCategories,
-      }
+      },
     ];
     //Check xem trong databse có tồn tại token và mật khẩu có đúng hay không!
     const userEmployer = await Employer.findOne({
       token: token,
     })
       .lean()
-      .select("-password -token").populate(populateCheck);
+      .select("-password -token")
+      .populate(populateCheck);
 
     //Nếu không đúng thì return tài khoản mật khẩu ko đúng
     if (!userEmployer) {
@@ -292,12 +322,15 @@ export const authen = async function (
       phoneCompany: userEmployer.phoneCompany || "- -",
       website: userEmployer.website || "- -",
       numberOfWorkers: userEmployer.numberOfWorkers || "- -",
-      activityFieldList:userEmployer?.activityFieldList?.map(item=>item._id) || "- -",
-      activityFieldListName: userEmployer?.activityFieldList?.map(item=>item.title).join(", ") || "- -",
+      activityFieldList:
+        userEmployer?.activityFieldList?.map((item) => item._id) || "- -",
+      activityFieldListName:
+        userEmployer?.activityFieldList?.map((item) => item.title).join(", ") ||
+        "- -",
       taxCodeCompany: userEmployer.taxCodeCompany || "- -",
       specificAddressCompany: userEmployer.specificAddressCompany || "- -",
       logoCompany: userEmployer.logoCompany || "",
-      
+      statusOnline: userEmployer.statusOnline,
     };
 
     res.status(200).json({
@@ -367,8 +400,10 @@ export const changeInfoCompany = async function (
   res: Response
 ): Promise<void> {
   try {
+    // Lấy email từ thông tin người dùng
     const email: string = req["user"]["email"];
-    console.log(req.body["thumbUrl"]);
+
+    // Tạo một đối tượng chứa thông tin cần cập nhật
     const record = {
       companyName: req.body.companyName,
       emailCompany: req.body.emailCompany,
@@ -378,28 +413,66 @@ export const changeInfoCompany = async function (
       activityFieldList: req.body.activityFieldList,
       taxCodeCompany: req.body.taxCodeCompany,
       specificAddressCompany: req.body.specificAddressCompany,
-
     };
-    if(req.body?.website){
+
+    // Kiểm tra và thêm website vào record nếu có
+    if (req.body?.website) {
       record["website"] = req.body.website;
     }
-    if(req.body?.descriptionCompany){
+
+    // Kiểm tra và thêm mô tả công ty vào record nếu có
+    if (req.body?.descriptionCompany) {
       record["descriptionCompany"] = req.body.descriptionCompany;
     }
-    if(req.body["thumbUrl"]){
+
+    // Kiểm tra và thêm logo công ty vào record nếu có
+    if (req.body["thumbUrl"]) {
       record["logoCompany"] = req.body["thumbUrl"];
     }
-    await Employer.updateOne({
-      email: email,
-    }, record);
 
-    res.status(200).json({ code: 200, success:"Cập nhật dữ liệu thành công" });
+    // Tạo một đối tượng chứa các trường cần cập nhật
+    let updateFields = {};
+    // Kiểm tra và cập nhật thông tin công ty cho phòng chat
+    if (req.body["thumbUrl"]) {
+      // Cập nhật avatar cho phòng chat
+      updateFields["avatar"] =
+        req.body["thumbUrl"] ||
+        "https://res.cloudinary.com/dmmz10szo/image/upload/v1710149283/GNOUD_2_pxldrg.png";
+    }
+
+    if (req.body["companyName"]) {
+      // Cập nhật tên phòng chat
+      updateFields["title"] =
+        "Công ty " + req.body.companyName || "Công ty chưa cập nhật";
+    }
+
+    // Thực hiện cập nhật nếu có trường nào cần cập nhật
+    if (Object.keys(updateFields).length > 0) {
+      await RoomChat.updateOne(
+        {
+          "users.employer_id": req["user"]._id,
+          typeRoom: "group",
+        },
+        updateFields
+      );
+    }
+
+    // Cập nhật thông tin công ty
+    await Employer.updateOne(
+      {
+        email: email,
+      },
+      record
+    );
+
+    // Gửi phản hồi thành công về cho client
+    res.status(200).json({ code: 200, success: "Cập nhật dữ liệu thành công" });
   } catch (error) {
+    // Ghi log lỗi và gửi phản hồi lỗi về cho client
     console.error("Error in API:", error);
     res.status(500).json({ error: "Internal Server Error" });
   }
-}
-
+};
 
 // [POST] /api/v1/employers/users/send-sms
 export const sendEms = async function (
@@ -589,6 +662,92 @@ export const changePasswordEmployer = async function (
       success: `Đổi mật khẩu thành công!`,
       tokenNew: tokenNew,
     });
+  } catch (error) {
+    console.error("Error in API:", error);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+};
+
+// [POST] /api/v1/employers/users/statistic-company
+export const statisticCompany = async function (
+  req: Request,
+  res: Response
+): Promise<void> {
+  try {
+    const idEmployer :string = req["user"]["_id"].toString();
+    //Công việc đang mở
+    const coutCompaignIsOpen = await Job.countDocuments({
+      employerId: idEmployer,
+      status: "active",
+      deleted: false,
+    });
+    //Công việc đang chờ duyệt
+    const coutCompaignIsPending = await Job.countDocuments({
+      employerId: idEmployer,
+      status: "pending",
+      deleted: false,
+    });
+    //Cv đã duyệt
+    const coutCvApproved = await Cv.countDocuments({
+      employerId: idEmployer,
+      status: "accept",
+    });
+
+    //Cv ứng tuyển
+    const coutCvApplication = await Cv.countDocuments({
+      employerId: idEmployer,
+      status: "pending",
+    });
+
+    const record = {
+      coutCompaignIsOpen,
+      coutCompaignIsPending,
+      coutCvApproved,
+      coutCvApplication,
+    };
+    //Lấy ra thông tin cv đã duyệt, theo ngày từ đó lấy ra tỉ lệ cv đã duyệt
+    const groupedCvs = await Cv.aggregate([
+      {
+        $match: {
+          employerId: idEmployer
+        }
+      },
+      {
+        $project: {
+          date: {
+            $dateToString: { format: "%Y-%m-%d", date: "$createdAt" },
+          },
+          status: 1,
+        },
+      },
+      {
+        $group: {
+          _id: "$date",
+          pending: {
+            $sum: {
+              $cond: [{ $eq: ["$status", "pending"] }, 1, 0],
+            },
+          },
+          refuse: {
+            $sum: {
+              $cond: [{ $eq: ["$status", "refuse"] }, 1, 0],
+            },
+          },
+          accept: {
+            $sum: {
+              $cond: [{ $eq: ["$status", "accept"] }, 1, 0],
+            },
+          },
+        },
+      },
+    ]);
+    record["groupedCvs"] = groupedCvs.map(item => {
+      return {
+        value: item.accept / (item.accept + item.pending + item.refuse),
+        type: item._id
+      };
+    });
+    res.status(200).json({ code: 200, data: record });
   } catch (error) {
     console.error("Error in API:", error);
     res.status(500).json({ error: "Internal Server Error" });
