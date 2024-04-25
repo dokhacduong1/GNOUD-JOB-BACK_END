@@ -166,7 +166,7 @@ const jobSearch = function (req, res) {
                 status: "active",
             })
                 .populate(populateCheck)
-                .select("address slug title salaryMin salaryMax slug")
+                .select("city address slug title salaryMin salaryMax slug")
                 .limit(12);
             convertData["jobByCategories"] = recordJobCategories;
             const dataEncrypted = (0, encryptedData_1.encryptedData)(convertData);

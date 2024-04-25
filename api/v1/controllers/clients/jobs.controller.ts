@@ -231,7 +231,7 @@ export const jobSearch = async function (
       status: "active",
     })
       .populate(populateCheck)
-      .select("address slug title salaryMin salaryMax slug")
+      .select("city address slug title salaryMin salaryMax slug")
       .limit(12);
 
     convertData["jobByCategories"] = recordJobCategories;
