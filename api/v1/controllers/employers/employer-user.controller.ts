@@ -302,7 +302,7 @@ export const authen = async function (
       res.status(401).json({ error: "Tài Khoản Đã Bị Khóa!" });
       return;
     }
-
+   
     //lấy ra thông tin cần thiết của user
     const recordNew = {
       id: userEmployer._id,
@@ -331,6 +331,7 @@ export const authen = async function (
       specificAddressCompany: userEmployer.specificAddressCompany || "- -",
       logoCompany: userEmployer.logoCompany || "",
       statusOnline: userEmployer.statusOnline,
+      countActive: userEmployer.activePhone === true ? 2 : 1,
     };
 
     res.status(200).json({

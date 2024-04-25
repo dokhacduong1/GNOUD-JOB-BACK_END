@@ -207,7 +207,7 @@ export const create = async function (
    
     let listSlugTag = [];
     //Nếu tồn tại listTagName thì tạo ra một mảng listSlugTag
-    if (req.body.listTagName.length > 0) {
+    if (req.body?.listTagName?.length > 0) {
       //Tạo ra một mảng listSlugTag
       listSlugTag = req.body.listTagName.map((item) =>`${slug(item)}-${Date.now()}`)
     }

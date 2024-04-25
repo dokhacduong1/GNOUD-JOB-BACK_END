@@ -34,5 +34,5 @@ export interface Find {
     deleted?: boolean,
     city?: string[],
     $or?: any,
-    slug?: string,
+    slug?: any,
   }

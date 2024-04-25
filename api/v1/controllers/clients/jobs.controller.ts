@@ -416,6 +416,7 @@ export const advancedSearch = async function (
       .limit(objectPagination.limitItem)
       .skip(objectPagination.skip)
       .select(select);
+      console.log(find)
     const convertData = records.map((record) => ({
       ...record.toObject(),
       companyName: record["employerId"]["companyName"],
@@ -752,15 +753,17 @@ export const jobByCompany = async function (
   res: Response
 ): Promise<void> {
   try {
-    const slug = req.params.slug;
+    const slug = req.params.slug.toString();
     const employerId = await Employer.findOne({ slug }).select("_id");
     if (!employerId) {
       res.status(200).json({ data: [], code: 200 });
       return;
     }
+    console.log(slug);
     const find: JobInterface.Find = {
       deleted: false,
       status: "active",
+      slug: { $ne: slug },
       employerId: employerId._id.toString(),
       end_date: { $gte: new Date() },
     };
@@ -819,7 +822,7 @@ export const jobByCompany = async function (
     const populateCheck: POPULATE[] = [
       {
         path: "employerId",
-        select: "image companyName address logoCompany",
+        select: "image companyName address logoCompany slug",
         model: Employer,
       },
       {
@@ -847,11 +850,13 @@ export const jobByCompany = async function (
       .limit(objectPagination.limitItem)
       .skip(objectPagination.skip)
       .select(select);
+
     const convertData = records.map((record) => ({
       ...record.toObject(),
       companyName: record["employerId"]["companyName"],
       companyImage: record["employerId"]["image"],
       logoCompany: record["employerId"]["logoCompany"],
+      slugCompany: record["employerId"]["slug"],
     }));
 
     res

@@ -258,6 +258,7 @@ const authen = function (req, res) {
                 specificAddressCompany: userEmployer.specificAddressCompany || "- -",
                 logoCompany: userEmployer.logoCompany || "",
                 statusOnline: userEmployer.statusOnline,
+                countActive: userEmployer.activePhone === true ? 2 : 1,
             };
             res.status(200).json({
                 success: "Xác Thự Thành Công!",

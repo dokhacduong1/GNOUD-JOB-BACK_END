@@ -140,6 +140,7 @@ const index = function (req, res) {
 };
 exports.index = index;
 const create = function (req, res) {
+    var _a, _b;
     return __awaiter(this, void 0, void 0, function* () {
         try {
             const permissions = req["userAdmin"].permissions;
@@ -150,7 +151,7 @@ const create = function (req, res) {
                 return;
             }
             let listSlugTag = [];
-            if (req.body.listTagName.length > 0) {
+            if (((_b = (_a = req.body) === null || _a === void 0 ? void 0 : _a.listTagName) === null || _b === void 0 ? void 0 : _b.length) > 0) {
                 listSlugTag = req.body.listTagName.map((item) => `${(0, slug_1.default)(item)}-${Date.now()}`);
             }
             const Jobs = {

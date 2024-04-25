@@ -117,7 +117,7 @@ export const coutJobs = async function (
     };
     //Lấy ra tất cả các công ty.
     const records = await Employer.find(find)
-      .select("companyName image logoCompany")
+      .select("companyName image logoCompany slug")
       .sort({ companyName: 1 });
 
     //Tìm tất cả các công việc.
