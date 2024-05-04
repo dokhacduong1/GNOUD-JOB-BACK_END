@@ -18,7 +18,7 @@ import routerSocketAll from "./socket/v1/routes/all/index-socket.routes";
 const app: Express = express();
 app.use(cors(
   {
-    origin:"*",
+    origin:"http://35.198.196.205:3001",
     methods:["POST","GET","DELETE","PUT","PATCH","OPTIONS"]
   }
 ))
@@ -29,7 +29,7 @@ const server = http.createServer(app);
 //Tạo một đối tượng io để sử dụng socket.io
 const io = new Server(server, {
   cors: {
-    origin: "*",
+    origin: "http://35.198.196.205:3001",
     methods: ["GET", "POST","DELETE","PUT","PATCH","OPTIONS"]
   }
 });

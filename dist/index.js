@@ -40,13 +40,13 @@ const http_1 = __importDefault(require("http"));
 const index_socket_routes_1 = __importDefault(require("./socket/v1/routes/all/index-socket.routes"));
 const app = (0, express_1.default)();
 app.use((0, cors_1.default)({
-    origin: "*",
+    origin: "http://35.198.196.205:3001",
     methods: ["POST", "GET", "DELETE", "PUT", "PATCH", "OPTIONS"]
 }));
 const server = http_1.default.createServer(app);
 const io = new socket_io_1.Server(server, {
     cors: {
-        origin: "*",
+        origin: "http://35.198.196.205:3001",
         methods: ["GET", "POST", "DELETE", "PUT", "PATCH", "OPTIONS"]
     }
 });
