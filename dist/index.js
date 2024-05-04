@@ -42,8 +42,8 @@ const app = (0, express_1.default)();
 const server = http_1.default.createServer(app);
 const io = new socket_io_1.Server(server, {
     cors: {
-        origin: "http://35.198.196.205:3001",
-        methods: ["GET", "POST"]
+        origin: "*",
+        methods: ["GET", "POST", "DELETE", "PUT", "PATCH", "OPTIONS"]
     }
 });
 (0, index_socket_routes_1.default)(io);
