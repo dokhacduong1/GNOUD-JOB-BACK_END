@@ -16,6 +16,12 @@ import routerSocketAll from "./socket/v1/routes/all/index-socket.routes";
 
 //Tạo một đối tượng app
 const app: Express = express();
+app.use(cors(
+  {
+    origin:"*",
+    methods:["POST","GET","DELETE","PUT","PATCH","OPTIONS"]
+  }
+))
 
 //Cấu hình để tạo một máy chủ HTTP mới
 const server = http.createServer(app);
@@ -39,12 +45,6 @@ app.set('socketio', io);
 //Cấu hình để nhận data body khi request
 app.use(bodyParser.json({ limit: '50mb' }))
 //Cấu hình cors để tên miền nào được truy cập,mặc định không truyền là cho phép tất cả
-app.use(cors(
-  {
-    origin:"*",
-    methods:["POST","GET","DELETE","PUT","PATCH","OPTIONS"]
-  }
-))
 
 //Import cấu hình file .env
 dotenv.config()

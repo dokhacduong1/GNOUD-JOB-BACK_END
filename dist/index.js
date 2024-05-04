@@ -39,6 +39,10 @@ const socket_io_1 = require("socket.io");
 const http_1 = __importDefault(require("http"));
 const index_socket_routes_1 = __importDefault(require("./socket/v1/routes/all/index-socket.routes"));
 const app = (0, express_1.default)();
+app.use((0, cors_1.default)({
+    origin: "*",
+    methods: ["POST", "GET", "DELETE", "PUT", "PATCH", "OPTIONS"]
+}));
 const server = http_1.default.createServer(app);
 const io = new socket_io_1.Server(server, {
     cors: {
@@ -49,10 +53,6 @@ const io = new socket_io_1.Server(server, {
 (0, index_socket_routes_1.default)(io);
 app.set('socketio', io);
 app.use(body_parser_1.default.json({ limit: '50mb' }));
-app.use((0, cors_1.default)({
-    origin: "*",
-    methods: ["POST", "GET", "DELETE", "PUT", "PATCH", "OPTIONS"]
-}));
 dotenv_1.default.config();
 database.connect();
 (0, index_routes_1.default)(app);
