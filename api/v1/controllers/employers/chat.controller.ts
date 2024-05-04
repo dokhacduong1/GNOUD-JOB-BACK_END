@@ -136,11 +136,11 @@ export const getHistoryChat = async function (
       return {
         typeRoom: "friend",
         room_chat_id: room._id || "", // id phòng chat
-        user_id: user["_id"] || "", // id người dùng
-        fullName: user["fullName"] || "", // tên đầy đủ người dùng
-        avatar: user["avatar"] || "", // avatar người dùng
-        phone: user["phone"] || "", // số điện thoại người dùng
-        email: user["email"] || "", // email người dùng
+        user_id: user?.["_id"] || "", // id người dùng
+        fullName: user?.["fullName"] || "", // tên đầy đủ người dùng
+        avatar: user?.["avatar"] || "", // avatar người dùng
+        phone: user?.["phone"] || "", // số điện thoại người dùng
+        email: user?.["email"] || "", // email người dùng
         lastMessage: chats ? chatAll?.lastMessage || "" : "", // tin nhắn cuối cùng hoặc chuỗi rỗng nếu không có tin nhắn
         idUserChat: chats ? chatAll?.idUserChat || "" : "", // id người dùng của tin nhắn cuối cùng hoặc chuỗi rỗng nếu không có tin nhắn
         unreadCount: unreadCount, // Số lượng tin nhắn chưa đọc
