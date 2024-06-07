@@ -16,7 +16,8 @@ exports.connect = void 0;
 const mongoose_1 = __importDefault(require("mongoose"));
 const connect = () => __awaiter(void 0, void 0, void 0, function* () {
     try {
-        yield mongoose_1.default.connect(process.env.MONGO_URL || "mongodb://localhost:27017/apply-for-job");
+        console.log(process.env.MONGO_URL);
+        yield mongoose_1.default.connect(process.env.MONGO_URL);
         console.log("Connect Success!");
     }
     catch (error) {
